@@ -33,9 +33,11 @@ Fetch email, Slack, and calendar/todo **in parallel**, generate today's briefing
 Bash agent:
 
 ```bash
-gog gmail search "is:unread -category:promotions -category:social" --max 20 --json --account YOUR_EMAIL
-gog gmail search "is:unread -category:promotions -category:social" --max 20 --json --account YOUR_WORK_EMAIL
+gog gmail search "is:unread to:me -category:promotions -category:social" --max 20 --json --account YOUR_EMAIL
+gog gmail search "is:unread to:me -category:promotions -category:social" --max 20 --json --account YOUR_WORK_EMAIL
 ```
+
+The `to:me` filter ensures only emails directly addressed to you are fetched — shared mailbox or support-routed threads won't appear unless you are a direct recipient.
 
 Classify using the rules from the "Email Classification Rules" section below. Auto-archive all `skip` emails:
 ```bash

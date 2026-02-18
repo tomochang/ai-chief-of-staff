@@ -37,11 +37,13 @@ gog gmail search "is:unread label:YOUR_NOISY_LABEL" --max 50 --json --account YO
 
 ```bash
 # Personal account
-gog gmail search "is:unread -category:promotions -category:social" --max 20 --json --account YOUR_EMAIL
+gog gmail search "is:unread to:me -category:promotions -category:social" --max 20 --json --account YOUR_EMAIL
 
 # Work account (exclude known noise)
-gog gmail search "is:unread -category:promotions -category:social -label:YOUR_NOISY_LABEL" --max 20 --json --account YOUR_WORK_EMAIL
+gog gmail search "is:unread to:me -category:promotions -category:social -label:YOUR_NOISY_LABEL" --max 20 --json --account YOUR_WORK_EMAIL
 ```
+
+The `to:me` filter ensures only emails directly addressed to you are fetched. Shared mailbox threads (e.g. support@) won't appear unless you are a direct recipient.
 
 **nextPageToken**: If the response includes nextPageToken, important emails may remain. Fetch the next page.
 
