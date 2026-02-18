@@ -69,9 +69,15 @@ for ROOM_ID in $(echo "$ROOMS" | jq -r '.[].room_id'); do
   ROOM_TYPE=$(echo "$ROOMS" | jq -r ".[] | select(.room_id == ${ROOM_ID}) | .type")
   UNREAD=$(echo "$ROOMS" | jq -r ".[] | select(.room_id == ${ROOM_ID}) | .unread_num")
   MENTION=$(echo "$ROOMS" | jq -r ".[] | select(.room_id == ${ROOM_ID}) | .mention_num")
+  LAST_UPDATE=$(echo "$ROOMS" | jq -r ".[] | select(.room_id == ${ROOM_ID}) | .last_update_time")
 
-  # Skip rooms with no unread and no mentions
-  if [[ "$UNREAD" == "0" && "$MENTION" == "0" ]]; then
+  # Skip rooms with no recent activity (based on last_update_time)
+  if [[ "$LAST_UPDATE" -lt "$CUTOFF" ]]; then
+    continue
+  fi
+
+  # Skip "my" type rooms (personal memo)
+  if [[ "$ROOM_TYPE" == "my" ]]; then
     continue
   fi
 
@@ -110,9 +116,12 @@ for ROOM_ID in $(echo "$ROOMS" | jq -r '.[].room_id'); do
   LAST_IS_MINE=$(echo "$LAST_MSG" | jq '.is_mine')
   LAST_TO_ME=$(echo "$LAST_MSG" | jq '.to_me')
 
+  # Check if any recent message is addressed to me and unanswered
+  HAS_TO_ME=$(echo "$RECENT" | jq '[.[] | select(.to_me == true and .is_mine == false)] | length')
+
   NEEDS_ACTION=false
   if [[ "$LAST_IS_MINE" == "false" ]]; then
-    if [[ "$LAST_TO_ME" == "true" || "$ROOM_TYPE" == "direct" || "$MENTION" != "0" ]]; then
+    if [[ "$HAS_TO_ME" -gt 0 || "$ROOM_TYPE" == "direct" ]]; then
       NEEDS_ACTION=true
     fi
   fi
@@ -148,22 +157,18 @@ done
 >&2 echo "Scan complete. ${SCANNED} rooms with activity."
 
 # Build final output
-OUTPUT=$(jq -n \
+ACTION_COUNT=$(echo "$RESULTS" | jq '[.[] | select(.needs_action == true)] | length')
+
+echo "$RESULTS" | jq \
   --argjson my_id "$MY_ACCOUNT_ID" \
   --arg my_name "$MY_NAME" \
   --argjson hours "$HOURS" \
-  --argjson rooms "$RESULTS" \
+  --argjson ac "$ACTION_COUNT" \
   '{
     my_account_id: $my_id,
     my_name: $my_name,
     scan_hours: $hours,
-    rooms_with_activity: ($rooms | length),
-    action_required: [.rooms[] | select(.needs_action)] | length,
-    rooms: $rooms
-  }' 2>/dev/null)
-
-# Fix: action_required count from RESULTS directly
-ACTION_COUNT=$(echo "$RESULTS" | jq '[.[] | select(.needs_action == true)] | length')
-OUTPUT=$(echo "$OUTPUT" | jq --argjson ac "$ACTION_COUNT" '.action_required = $ac')
-
-echo "$OUTPUT"
+    rooms_with_activity: length,
+    action_required: $ac,
+    rooms: .
+  }'
