@@ -84,7 +84,7 @@ location:, meeting room, building, floor,
 1. **Extract from email**: date/time, meeting link (Teams/Zoom/Meet URL), location, title
 2. **Cross-reference calendar**:
    ```bash
-   gog calendar events --from <date> --to <date+1> --all --max 30
+   gog calendar events --from <date> --to <date+1> --max 30
    ```
 3. **Check & update**:
    | Calendar state | Action |
