@@ -26,7 +26,7 @@ Fetch email, Slack, and calendar/todo **in parallel**, generate today's briefing
 
 ## Step 1: Parallel data fetch
 
-**Launch 3 Tasks simultaneously.**
+**Launch 4 Tasks simultaneously.**
 
 ### Task 1: Email fetch + classify + archive skips
 
@@ -73,6 +73,16 @@ gog calendar events --today --all --max 30
 ```
 
 Also read `private/todo.md` and extract today's relevant incomplete tasks.
+
+### Task 4: Chatwork fetch + classify
+
+Bash agent:
+
+```bash
+bash YOUR_WORKSPACE/scripts/chatwork-fetch.sh --hours 24 --json
+```
+
+Classify using the "Chatwork Classification Rules" section below.
 
 ---
 
@@ -121,13 +131,22 @@ Combine all 3 Task results into this format:
 ### DMs (N)
 1. @charlie: Timeline update?
 
+## Chatwork
+
+### Action Required (N)
+1. [RoomName] CustomerName: 質問内容の要約
+2. DM @PersonName: メッセージの要約
+
+### Info Only (N)
+1. [RoomName] PersonName: 共有内容の要約
+
 ## Todo (today)
 - [ ] Prepare for 14:00 client meeting
 - [ ] Submit expense report
 
 ---
 
-Briefing complete. Processing N action_required emails + N Slack messages.
+Briefing complete. Processing N action_required emails + N Slack + N Chatwork messages.
 ```
 
 ---
@@ -190,6 +209,14 @@ mcp__slack__conversations_add_message:
   channel_id: <channel_id>
   thread_ts: <thread_ts>
   payload: "<reply>"
+```
+
+#### Chatwork
+```bash
+curl -s -X POST \
+  -H "x-chatworktoken: ${CHATWORK_API_TOKEN}" \
+  -d "body=<reply>&self_unread=0" \
+  "https://api.chatwork.com/v2/rooms/<room_id>/messages"
 ```
 
 ---
@@ -266,5 +293,29 @@ gog gmail thread modify "<threadId>" --remove "INBOX,UNREAD" --force
 - Direct @YOUR_NAME mention
 - Thread you participated in + unanswered
 - Question/request keywords
+
+### Priority: skip > meeting_info > action_required > info_only
+
+---
+
+## Chatwork Classification Rules
+
+### skip
+- Your own messages only in the time window
+- System notifications (member joined/left)
+- Bot/integration posts
+
+### info_only
+- Group chat messages not addressed to you (`[To:YOUR_ACCOUNT_ID]` absent)
+- File shares without question
+
+### meeting_info
+- Zoom/Teams/Meet URL
+- Date/time + meeting context
+
+### action_required
+- Message contains `[To:YOUR_ACCOUNT_ID]` and last message is not yours
+- DM where other party sent last message
+- Question/request keywords: `?`, `お願い`, `確認`, `教えて`, `いかがでしょう`, `ご対応`, `ご確認`, `ご教示`, `可能でしょうか`
 
 ### Priority: skip > meeting_info > action_required > info_only
