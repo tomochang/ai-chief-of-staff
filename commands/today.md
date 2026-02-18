@@ -39,6 +39,15 @@ gog gmail search "is:unread to:me -category:promotions -category:social" --max 2
 
 The `to:me` filter ensures only emails directly addressed to you are fetched — shared mailbox or support-routed threads won't appear unless you are a direct recipient.
 
+**Escalation check (optional):** If you use a shared mailbox (e.g. support@), add a second search to catch threads where a customer mentions you by name — even though you're not a direct recipient:
+
+```bash
+# Shared mailbox escalation check (customize from: to your shared address)
+gog gmail search "is:unread from:YOUR_SHARED_MAILBOX" --max 10 --json --account YOUR_WORK_EMAIL
+```
+
+For each result, fetch the full thread (`gog gmail thread <threadId>`) and check if the customer's message body references your name (including common misspellings/variations). Only promote to action_required if your name appears in context; skip all others.
+
 Classify using the rules from the "Email Classification Rules" section below. Auto-archive all `skip` emails:
 ```bash
 gog gmail thread modify "<threadId>" --remove "INBOX,UNREAD" --force
@@ -230,6 +239,15 @@ gog gmail thread modify "<threadId>" --remove "INBOX,UNREAD" --force
 - From contains `@github.com`, `@slack.com`, `@jira`, `@notion.so`
 - Subject contains `[GitHub]`, `[Slack]`, `[Jira]`
 - YOUR_CUSTOM_SKIP_RULES
+- Shared mailbox threads (e.g. `from:support@`) — **UNLESS** the escalation rule below applies
+
+### Escalation rule for shared mailbox threads
+
+Threads from shared mailboxes (e.g. support@, info@) are normally skipped, but **promote to action_required** if the customer's message body references you by name. Check for:
+- Your name and common misspellings/variations (e.g. kanji variants, phonetic spellings)
+- Contextual references like "your sales rep" or "the person I spoke with" that clearly refer to you
+
+Use the full thread context to judge — a customer saying "I was told by [your name]" or "my account manager [your name]" should be flagged.
 
 ### info_only
 - You are in CC
