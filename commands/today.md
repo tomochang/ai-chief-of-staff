@@ -69,7 +69,7 @@ Classify using the "Slack Classification Rules" section below.
 Bash agent:
 
 ```bash
-gog calendar events --today --all --max 30
+gog calendar events --today --max 30
 ```
 
 Also read `private/todo.md` and extract today's relevant incomplete tasks.
