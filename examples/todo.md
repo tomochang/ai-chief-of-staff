@@ -6,6 +6,27 @@ Your AI uses this to track your schedule, action items, and pending decisions. K
 
 ---
 
+## Quick Start (Minimal)
+
+Don't overthink it. Start with what's on your plate right now:
+
+```markdown
+## Action Items
+| Item | Owner |
+|------|-------|
+| 🔴 [Urgent thing] | Me |
+| 🟡 [This week] | Me |
+
+## Waiting On
+| Item | Waiting for |
+|------|-------------|
+| [Thing] | [Person] |
+```
+
+Add the full schedule table and completed section as you get comfortable.
+
+---
+
 ## Upcoming Schedule
 
 | Date | Event | With | Status |
