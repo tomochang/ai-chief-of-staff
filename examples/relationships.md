@@ -6,6 +6,23 @@ Track the people in your life — who they are, how to reach them, and the conte
 
 ---
 
+## Quick Start (Minimal)
+
+Start with just 3 people you email most. This alone makes a huge difference:
+
+```markdown
+### [Name] — [Role], [Company]
+| Field | Details |
+|-------|---------|
+| Email | [email] |
+| Relationship | [one line: client, boss, friend, etc.] |
+| Communication style | [formal/casual, any quirks] |
+```
+
+Expand with assistants, dietary info, and interaction history as you go.
+
+---
+
 ## Work — Key Stakeholders
 
 ### Sarah Chen — VP of Partnerships, Meridian Capital

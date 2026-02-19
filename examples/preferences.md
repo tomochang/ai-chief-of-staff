@@ -6,6 +6,25 @@ Your AI's cheat sheet for scheduling, communication, and daily operations. The m
 
 ---
 
+## Quick Start (Minimal)
+
+Start with the 3 things your AI asks about most:
+
+```markdown
+## Scheduling
+- Core hours: [HH:MM]–[HH:MM] (Mon–Fri)
+- Preferred meeting days: [e.g., Tue–Thu]
+
+## Communication
+- Business emails: [formal/casual], sign with [name]
+
+## AI Behavior
+- Ask before: sending emails, booking anything
+- Do without asking: archive junk, update calendar from confirmed emails
+```
+
+---
+
 ## Scheduling
 
 ### Work Hours & Availability
