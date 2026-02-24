@@ -1,5 +1,5 @@
 ---
-description: Morning briefing — fetch email, Slack, LINE, Messenger, and calendar in parallel, then triage action items
+description: Morning briefing — fetch email, Slack, LINE, Messenger, Chatwork, and calendar in parallel, then triage action items
 allowed-tools:
   - Read
   - Bash
@@ -20,7 +20,7 @@ allowed-tools:
 
 ## Overview
 
-Fetch email, Slack, LINE, Messenger, and calendar/todo **in parallel**, triage pending responses and tasks, generate today's briefing, then process all action_required items with reply drafts through to send + follow-up.
+Fetch email, Slack, LINE, Messenger, Chatwork, and calendar/todo **in parallel**, triage pending responses and tasks, generate today's briefing, then process all action_required items with reply drafts through to send + follow-up.
 
 **Goal:** Zero undecided items — every pending response, overdue task, and action_required message gets a decision before the briefing ends.
 
@@ -28,7 +28,7 @@ Fetch email, Slack, LINE, Messenger, and calendar/todo **in parallel**, triage p
 
 ## Step 1: Parallel data fetch
 
-**Launch 5 Tasks simultaneously.**
+**Launch 6 Tasks simultaneously.**
 
 ### Task 1: Email fetch + classify + archive skips
 
@@ -143,11 +143,21 @@ ls -lt private/*messenger* private/drafts/*messenger* 2>/dev/null
 
 Classify using Messenger Classification Rules below.
 
+### Task 6: Chatwork fetch + classify
+
+Bash agent:
+
+```bash
+bash YOUR_WORKSPACE/scripts/chatwork-fetch.sh --hours 24 --json
+```
+
+Classify using the "Chatwork Classification Rules" section below.
+
 ---
 
 ## Step 2: Generate briefing
 
-Combine all 5 Task results into this format:
+Combine all 6 Task results into this format:
 
 ```
 # Today's Briefing — YYYY-MM-DD (Day)
@@ -219,6 +229,15 @@ Combine all 5 Task results into this format:
 **Last message**: Are you free next week?
 **Context**: Business, last met 1/28
 
+## Chatwork
+
+### Action Required (N)
+1. [RoomName] CustomerName: Question summary
+2. DM @PersonName: Message summary
+
+### Info Only (N)
+1. [RoomName] PersonName: Shared content summary
+
 ## Todo (today)
 - [ ] Prepare for 14:00 client meeting
 - [ ] Submit expense report
@@ -232,7 +251,7 @@ Combine all 5 Task results into this format:
 
 ---
 
-Briefing complete. N action_required items (email: N, Slack: N, LINE: N, Messenger: N). N triage items pending decision in Step 3.
+Briefing complete. N action_required items (email: N, Slack: N, LINE: N, Messenger: N, Chatwork: N). N triage items pending decision in Step 3.
 ```
 
 ---
@@ -379,6 +398,14 @@ YOUR_MESSENGER_SEND_COMMAND <name> <message> --chrome   # Browser fallback
 - Update triage/status table (`private/drafts/messenger-replies-YYYY-MM-DD.md`) after send
 - **No group/multi-person thread sends**
 
+#### Chatwork
+```bash
+curl -s -X POST \
+  -H "x-chatworktoken: ${CHATWORK_API_TOKEN}" \
+  -d "body=<reply>&self_unread=0" \
+  "https://api.chatwork.com/v2/rooms/<room_id>/messages"
+```
+
 ---
 
 ## Step 5: Post-send processing (mandatory)
@@ -402,7 +429,7 @@ Apply triage decisions from Step 3:
 
 ### 5.5 Git commit & push
 ```bash
-cd YOUR_WORKSPACE && git add -A && git commit -m "today: morning triage (email/slack/line/messenger replies)" && git push
+cd YOUR_WORKSPACE && git add -A && git commit -m "today: morning triage (email/slack/line/messenger/chatwork replies)" && git push
 ```
 
 ### 5.6 Archive processed emails
@@ -509,3 +536,27 @@ Mark processed items as completed in:
 - **Group/multi-person threads are never action_required**
 
 ### Priority: skip > action_required > info_only
+
+---
+
+## Chatwork Classification Rules
+
+### skip
+- Your own messages only in the time window
+- System notifications (member joined/left)
+- Bot/integration posts
+
+### info_only
+- Group chat messages not addressed to you (`[To:YOUR_ACCOUNT_ID]` absent)
+- File shares without question
+
+### meeting_info
+- Zoom/Teams/Meet URL
+- Date/time + meeting context
+
+### action_required
+- Message contains `[To:YOUR_ACCOUNT_ID]` and last message is not yours
+- DM where other party sent last message
+- Question/request keywords: `?`, `お願い`, `確認`, `教えて`, `いかがでしょう`, `ご対応`, `ご確認`, `ご教示`, `可能でしょうか`
+
+### Priority: skip > meeting_info > action_required > info_only
