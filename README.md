@@ -22,48 +22,180 @@ Every morning, you type `/today` in your terminal. That's it:
 
 The concept is simple. Take five inputs — email, Slack, LINE, Messenger, calendar — and pipe them through **classify → triage → assist → execute → record**. Claude Code's `/command` system becomes the workflow engine. Hooks enforce reliability. Git persists your knowledge.
 
-No code to write. No SDK. No API wrapper. **Edit a markdown file and the behavior changes instantly.**
+Almost no code to write — the core system is markdown prompts. Hooks and scripts are lightweight bash/JS glue. **Edit a prompt file and the behavior changes instantly.**
 
 ```
 $ claude /today
 
 # Today's Briefing — Feb 18, 2026 (Tue)
 
-## Schedule (3)
-| Time        | Event                  | Location          | Prep?  |
-|-------------|------------------------|-------------------|--------|
-| 10:00-11:00 | Team standup           | Zoom: https://... | —      |
-| 14:00-15:00 | Client meeting         | Marunouchi Tower  | ⚠️     |
-| 19:00-      | Dinner @Ebisu          | Tatsuya           | —      |
+## Schedule (4)
+| Time        | Event                          | Location          | Prep?  |
+|-------------|--------------------------------|-------------------|--------|
+| 10:00-11:00 | Weekly product sync            | Zoom: https://... | —      |
+| 13:00-14:00 | 1:1 with Kenji (design review) | Office 3F         | —      |
+| 15:00-16:00 | Sequoia partner call           | Google Meet       | ⚠️     |
+| 19:30-      | Dinner with Ryo @Ebisu         | Afuri (ramen)     | —      |
 
-## Email — Skipped (5) → auto-archived
+## Email — Skipped (8) → auto-archived
+  GitHub notifications (3), Stripe receipts (2), Slack digests (2), newsletter (1)
+
 ## Email — Action Required (2)
 
-### 1. Jane Smith <jane@example.com>
-**Subject**: Q2 project kickoff timing
-**Summary**: Asking when we can schedule the kickoff meeting
+### 1. Sarah Chen <sarah@sequoia.com>
+**Subject**: Re: Feb board deck — a few questions
+**Summary**: Asking for updated ARR numbers and Q1 hiring plan
+before Thursday's board prep
 
 **Draft reply**:
-Thanks for reaching out. Here are some times that
-work on my end: ...
+Hi Sarah, thanks for flagging these. I'll have the updated
+ARR slide and hiring plan to you by EOD Wednesday. ...
+
+→ [Send] [Edit] [Skip]
+
+### 2. 松野陽子 <yoko@helixes.co>
+**Subject**: 業務委託契約の更新について
+**Summary**: Current contract expires 3/31, asking to renew
+
+**Draft reply**:
+松野様　お世話になっております。
+契約更新の件、承知いたしました。
+同条件での更新で問題ございません。...
 
 → [Send] [Edit] [Skip]
 
 ## LINE — Action Required (1)
 
-### 1. Taro Tanaka
-**Last message**: Are you free this weekend?
-**Context**: Friend, last met 2/10
+### 1. Ryo
+**Last message**: 今日の店やっぱアフリにしない？19:30で予約した
+**Context**: College friend, dinner tonight
 
-**Draft reply**: ...
+**Draft reply**: おー最高👍 19:30了解！
 
 → [Send] [Edit] [Skip]
 
-## Triage Queue
-- Stale/critical pending responses: 2
-- Overdue tasks: 1
-→ All items decided in Step 3
+## Slack — Action Required (1)
+
+### 1. #product-dev — @you by Kenji
+**Message**: Can you review the Figma before our 1:1?
+**Context**: Design review for v2 onboarding flow
+
+**Draft reply**: Will take a look before 1pm 👀
+
+→ [Send] [Edit] [Skip]
 ```
+
+---
+
+## Quick Start (5 minutes — Email + Calendar)
+
+Get email triage and calendar-aware scheduling working in 5 minutes. No Slack, LINE, Messenger, or autonomous mode needed.
+
+### Prerequisites
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
+- A Gmail CLI tool ([`gog`](https://github.com/pterm/gog) or any CLI that can search/send/archive Gmail)
+- Node.js 18+
+
+### 1. Copy the essentials
+
+```bash
+# Commands
+cp commands/mail.md ~/.claude/commands/
+
+# Workspace files
+mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts,private}
+cp skills/schedule-reply/SKILL.md ~/your-workspace/skills/schedule-reply/
+cp hooks/post-send.sh ~/your-workspace/hooks/
+cp scripts/calendar-suggest.js ~/your-workspace/scripts/
+cp examples/SOUL.md ~/your-workspace/
+```
+
+### 2. Replace placeholders
+
+```bash
+grep -r "YOUR_" commands/mail.md skills/ hooks/ scripts/calendar-suggest.js
+```
+
+| Placeholder | Example |
+|-------------|---------|
+| `YOUR_EMAIL` | `alice@gmail.com` |
+| `YOUR_WORK_EMAIL` | `alice@company.com` |
+| `YOUR_SIGNATURE` | `Alice` |
+| `YOUR_WORKSPACE` | `~/workspace` |
+| `YOUR_CALENDAR_ID` | `primary` |
+
+### 3. Create your knowledge files
+
+```bash
+cd ~/your-workspace
+
+cat > private/relationships.md << 'EOF'
+# Relationships
+
+## John Smith (Acme Corp)
+- Role: VP Engineering
+- Context: Working on API integration project
+- Last: 2/15 discussed timeline for Q2 launch
+EOF
+
+cat > private/preferences.md << 'EOF'
+# Preferences
+
+## Scheduling
+- Prefer afternoons (11:00+)
+- Weekdays only, 9:00-18:00
+- Offer 3-5 time candidates
+EOF
+
+cat > private/todo.md << 'EOF'
+# Todo
+
+## Upcoming
+| Date | Event | Status |
+|------|-------|--------|
+EOF
+```
+
+### 4. Configure hook + permissions
+
+In your project's `.claude/settings.local.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/your-workspace/hooks/post-send.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(gog gmail search*)",
+      "Bash(gog gmail send*)",
+      "Bash(gog gmail thread*)",
+      "Bash(gog calendar*)",
+      "Bash(node */scripts/calendar-suggest.js*)"
+    ]
+  }
+}
+```
+
+### 5. Try it
+
+```bash
+claude /mail          # Triage your email
+claude /schedule-reply "Reply to John about next week's meeting"
+```
+
+You now have email triage with hook-enforced post-send processing. Read on to add more channels.
 
 ---
 
@@ -154,6 +286,99 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 **The autonomous layer runs unattended.** `scripts/autonomous/` contains scripts that run on a schedule (via launchd or cron) using `claude -p` (non-interactive mode). The dispatcher routes to specialized handlers: `today.sh` triages all 5 channels in parallel, `slack-bridge.sh` turns Slack DMs into a bidirectional Claude interface, and `notify.sh` sends results back to you via Slack.
 
 **Knowledge files are your memory.** Claude Code sessions are stateless. Your relationships, preferences, and todos persist in markdown files that get version-controlled with git. Every session reads these files to maintain continuity.
+
+---
+
+## Advanced Setup
+
+### Add Slack
+
+1. Configure the [Slack MCP server](https://github.com/anthropics/claude-code) in Claude Code
+2. Copy `commands/slack.md` to `~/.claude/commands/`
+3. Replace `YOUR_NAME` and `YOUR_SLACK_MENTIONS` in the command file
+4. Add `"Skill(slack)"` to your permissions
+
+```bash
+claude /slack         # Triage Slack mentions and DMs
+```
+
+### Add LINE
+
+Requires a Matrix homeserver with [mautrix-line](https://github.com/mautrix/line).
+
+```bash
+cp scripts/core/msg-core.sh ~/your-workspace/scripts/core/
+cp scripts/line-*.sh ~/your-workspace/scripts/
+```
+
+Replace `YOUR_MATRIX_SERVER`, `YOUR_MATRIX_ADMIN_TOKEN`, `YOUR_MATRIX_USER_PARTIAL`, `YOUR_VPS_HOST` in the scripts. See `examples/skills/line-skill.md` for the full workflow.
+
+### Add Messenger
+
+Requires Google Chrome with Messenger logged in (macOS).
+
+```bash
+cp scripts/messenger-*.sh ~/your-workspace/scripts/
+```
+
+Replace `YOUR_MATRIX_USER_PARTIAL` in the scripts. See `examples/skills/messenger-skill.md` for the Chrome CDP/AppleScript workflow.
+
+### Add the unified `/today` command
+
+Once you have your desired channels configured:
+
+```bash
+cp commands/today.md ~/.claude/commands/
+```
+
+Replace the `YOUR_LINE_*`, `YOUR_MESSENGER_*`, and `YOUR_WORK_DOMAIN` placeholders. Unconfigured channels are automatically skipped.
+
+```bash
+claude /today         # Morning briefing — all configured channels
+```
+
+### Add autonomous execution
+
+Set up unattended triage on a schedule:
+
+```bash
+cp -r scripts/autonomous/ ~/your-workspace/scripts/autonomous/
+```
+
+Replace `YOUR_SLACK_USER_ID`, `YOUR_SLACK_BOT_TOKEN`, `YOUR_WORK_EMAIL`, `YOUR_EMAIL` in the autonomous scripts. Then install a launchd plist (see `examples/launchd/`) or cron job.
+
+### Add rules
+
+Copy behavioral constraints that fire on every Claude Code session:
+
+```bash
+mkdir -p ~/your-workspace/.claude/rules
+cp examples/rules/*.md ~/your-workspace/.claude/rules/
+```
+
+<details>
+<summary>All placeholders</summary>
+
+| Placeholder | Example | Used in |
+|-------------|---------|---------|
+| `YOUR_EMAIL` | `alice@gmail.com` | mail.md, today.md |
+| `YOUR_WORK_EMAIL` | `alice@company.com` | mail.md, today.md |
+| `YOUR_NAME` | `Alice` | slack.md, today.md |
+| `YOUR_SIGNATURE` | `Alice` | mail.md, schedule-reply |
+| `YOUR_WORKSPACE` | `~/workspace` | hooks, scripts |
+| `YOUR_CALENDAR_ID` | `primary` | calendar-suggest.js |
+| `YOUR_SKIP_DOMAINS` | `@company-internal.com` | mail.md |
+| `YOUR_SLACK_USER_ID` | `U1234567890` | config.json, slack-api.sh, slack-bridge.sh |
+| `YOUR_SLACK_BOT_TOKEN` | `xoxb-...` | .env |
+| `YOUR_SLACK_MENTIONS` | `@alice, @Alice` | triage-slack.md |
+| `YOUR_MATRIX_USER_PARTIAL` | `ualice` | msg-core.sh, line-sync.sh |
+| `YOUR_VPS_HOST` | `root@your-server.com` | line-rooms.sh |
+| `YOUR_MATRIX_SERVER` | `http://localhost:8008` | today.md, msg-core.sh |
+| `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md, msg-core.sh |
+| `YOUR_WORK_DOMAIN` | `company.com` | today.md, triage-email.md |
+| `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
+
+</details>
 
 ---
 
@@ -283,211 +508,6 @@ Scripts for LINE and Messenger messaging. LINE uses a Matrix bridge; Messenger u
 Example skills for LINE and Messenger are in `examples/skills/`:
 - `line-skill.md` — Full LINE workflow with phases, rules, and troubleshooting
 - `messenger-skill.md` — Full Messenger workflow with Chrome CDP/AppleScript
-
----
-
-## Quick Start (5 minutes — Email + Calendar)
-
-Get email triage and calendar-aware scheduling working in 5 minutes. No Slack, LINE, Messenger, or autonomous mode needed.
-
-### Prerequisites
-
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
-- A Gmail CLI tool ([`gog`](https://github.com/pterm/gog) or any CLI that can search/send/archive Gmail)
-- Node.js 18+
-
-### 1. Copy the essentials
-
-```bash
-# Commands
-cp commands/mail.md ~/.claude/commands/
-
-# Workspace files
-mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts,private}
-cp skills/schedule-reply/SKILL.md ~/your-workspace/skills/schedule-reply/
-cp hooks/post-send.sh ~/your-workspace/hooks/
-cp scripts/calendar-suggest.js ~/your-workspace/scripts/
-cp examples/SOUL.md ~/your-workspace/
-```
-
-### 2. Replace placeholders
-
-```bash
-grep -r "YOUR_" commands/mail.md skills/ hooks/ scripts/calendar-suggest.js
-```
-
-| Placeholder | Example |
-|-------------|---------|
-| `YOUR_EMAIL` | `alice@gmail.com` |
-| `YOUR_WORK_EMAIL` | `alice@company.com` |
-| `YOUR_SIGNATURE` | `Alice` |
-| `YOUR_WORKSPACE` | `~/workspace` |
-| `YOUR_CALENDAR_ID` | `primary` |
-
-### 3. Create your knowledge files
-
-```bash
-cd ~/your-workspace
-
-cat > private/relationships.md << 'EOF'
-# Relationships
-
-## John Smith (Acme Corp)
-- Role: VP Engineering
-- Context: Working on API integration project
-- Last: 2/15 discussed timeline for Q2 launch
-EOF
-
-cat > private/preferences.md << 'EOF'
-# Preferences
-
-## Scheduling
-- Prefer afternoons (11:00+)
-- Weekdays only, 9:00-18:00
-- Offer 3-5 time candidates
-EOF
-
-cat > private/todo.md << 'EOF'
-# Todo
-
-## Upcoming
-| Date | Event | Status |
-|------|-------|--------|
-EOF
-```
-
-### 4. Configure hook + permissions
-
-In your project's `.claude/settings.local.json`:
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/your-workspace/hooks/post-send.sh"
-          }
-        ]
-      }
-    ]
-  },
-  "permissions": {
-    "allow": [
-      "Bash(gog gmail search*)",
-      "Bash(gog gmail send*)",
-      "Bash(gog gmail thread*)",
-      "Bash(gog calendar*)",
-      "Bash(node */scripts/calendar-suggest.js*)"
-    ]
-  }
-}
-```
-
-### 5. Try it
-
-```bash
-claude /mail          # Triage your email
-claude /schedule-reply "Reply to John about next week's meeting"
-```
-
-You now have email triage with hook-enforced post-send processing. Read on to add more channels.
-
----
-
-## Advanced Setup
-
-### Add Slack
-
-1. Configure the [Slack MCP server](https://github.com/anthropics/claude-code) in Claude Code
-2. Copy `commands/slack.md` to `~/.claude/commands/`
-3. Replace `YOUR_NAME` and `YOUR_SLACK_MENTIONS` in the command file
-4. Add `"Skill(slack)"` to your permissions
-
-```bash
-claude /slack         # Triage Slack mentions and DMs
-```
-
-### Add LINE
-
-Requires a Matrix homeserver with [mautrix-line](https://github.com/mautrix/line).
-
-```bash
-cp scripts/core/msg-core.sh ~/your-workspace/scripts/core/
-cp scripts/line-*.sh ~/your-workspace/scripts/
-```
-
-Replace `YOUR_MATRIX_SERVER`, `YOUR_MATRIX_ADMIN_TOKEN`, `YOUR_MATRIX_USER_PARTIAL`, `YOUR_VPS_HOST` in the scripts. See `examples/skills/line-skill.md` for the full workflow.
-
-### Add Messenger
-
-Requires Google Chrome with Messenger logged in (macOS).
-
-```bash
-cp scripts/messenger-*.sh ~/your-workspace/scripts/
-```
-
-Replace `YOUR_MATRIX_USER_PARTIAL` in the scripts. See `examples/skills/messenger-skill.md` for the Chrome CDP/AppleScript workflow.
-
-### Add the unified `/today` command
-
-Once you have your desired channels configured:
-
-```bash
-cp commands/today.md ~/.claude/commands/
-```
-
-Replace the `YOUR_LINE_*`, `YOUR_MESSENGER_*`, and `YOUR_WORK_DOMAIN` placeholders. Unconfigured channels are automatically skipped.
-
-```bash
-claude /today         # Morning briefing — all configured channels
-```
-
-### Add autonomous execution
-
-Set up unattended triage on a schedule:
-
-```bash
-cp -r scripts/autonomous/ ~/your-workspace/scripts/autonomous/
-```
-
-Replace `YOUR_SLACK_USER_ID`, `YOUR_SLACK_BOT_TOKEN`, `YOUR_WORK_EMAIL`, `YOUR_EMAIL` in the autonomous scripts. Then install a launchd plist (see `examples/launchd/`) or cron job.
-
-### Add rules
-
-Copy behavioral constraints that fire on every Claude Code session:
-
-```bash
-mkdir -p ~/your-workspace/.claude/rules
-cp examples/rules/*.md ~/your-workspace/.claude/rules/
-```
-
-<details>
-<summary>All placeholders</summary>
-
-| Placeholder | Example | Used in |
-|-------------|---------|---------|
-| `YOUR_EMAIL` | `alice@gmail.com` | mail.md, today.md |
-| `YOUR_WORK_EMAIL` | `alice@company.com` | mail.md, today.md |
-| `YOUR_NAME` | `Alice` | slack.md, today.md |
-| `YOUR_SIGNATURE` | `Alice` | mail.md, schedule-reply |
-| `YOUR_WORKSPACE` | `~/workspace` | hooks, scripts |
-| `YOUR_CALENDAR_ID` | `primary` | calendar-suggest.js |
-| `YOUR_SKIP_DOMAINS` | `@company-internal.com` | mail.md |
-| `YOUR_SLACK_USER_ID` | `U1234567890` | config.json, slack-api.sh, slack-bridge.sh |
-| `YOUR_SLACK_BOT_TOKEN` | `xoxb-...` | .env |
-| `YOUR_SLACK_MENTIONS` | `@alice, @Alice` | triage-slack.md |
-| `YOUR_MATRIX_USER_PARTIAL` | `ualice` | msg-core.sh, line-sync.sh |
-| `YOUR_VPS_HOST` | `root@your-server.com` | line-rooms.sh |
-| `YOUR_MATRIX_SERVER` | `http://localhost:8008` | today.md, msg-core.sh |
-| `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md, msg-core.sh |
-| `YOUR_WORK_DOMAIN` | `company.com` | today.md, triage-email.md |
-| `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
-
-</details>
 
 ---
 
