@@ -43,17 +43,17 @@ delay 0.6
 
 printf "${DIM}● Reading SOUL.md, preferences.md, relationships.md...${RESET}"
 delay 0.8
-printf "\r${GREEN}✓${RESET} ${DIM}Knowledge files loaded${RESET}                              \n"
+printf "\r\033[2K${GREEN}✓${RESET} ${DIM}Knowledge files loaded${RESET}                              \n"
 delay 0.2
 
 printf "${DIM}● Fetching email, Slack, LINE, Messenger, Chatwork, calendar...${RESET}"
 delay 1.5
-printf "\r${GREEN}✓${RESET} ${DIM}6 channels fetched in parallel (3.8s)${RESET}               \n"
+printf "\r\033[2K${GREEN}✓${RESET} ${DIM}6 channels fetched in parallel (3.8s)${RESET}               \n"
 delay 0.2
 
 printf "${DIM}● Classifying 47 messages...${RESET}"
 delay 1.0
-printf "\r${GREEN}✓${RESET} ${DIM}Classified: 8 skip, 3 info, 6 action_required${RESET}       \n"
+printf "\r\033[2K${GREEN}✓${RESET} ${DIM}Classified: 8 skip, 3 info, 6 action_required${RESET}       \n"
 delay 0.4
 
 echo ""
@@ -187,7 +187,7 @@ delay 0.5
 
 printf "${DIM}● Sending reply to Sarah Chen...${RESET}"
 delay 0.6
-printf "\r${GREEN}✅ Email sent${RESET}                                                \n"
+printf "\r\033[2K${GREEN}✅ Email sent${RESET}                                                \n"
 delay 0.3
 
 echo ""
@@ -196,32 +196,32 @@ delay 0.4
 
 printf "   ${DIM}Calendar...${RESET}"
 delay 0.4
-printf "\r   ${GREEN}✅${RESET} Calendar — tentative block: ${DIM}\"Prepare board deck\" (Wed 14:00)${RESET}\n"
+printf "\r\033[2K   ${GREEN}✅${RESET} Calendar — tentative block: ${DIM}\"Prepare board deck\" (Wed 14:00)${RESET}\n"
 delay 0.4
 
 printf "   ${DIM}Relationships...${RESET}"
 delay 0.4
-printf "\r   ${GREEN}✅${RESET} Relationships — updated: ${DIM}Sarah Chen → \"2/18 replied re: board deck\"${RESET}\n"
+printf "\r\033[2K   ${GREEN}✅${RESET} Relationships — updated: ${DIM}Sarah Chen → \"2/18 replied re: board deck\"${RESET}\n"
 delay 0.4
 
 printf "   ${DIM}Todo...${RESET}"
 delay 0.4
-printf "\r   ${GREEN}✅${RESET} Todo — added: ${DIM}\"ARR slide + hiring plan → Wed EOD\"${RESET}              \n"
+printf "\r\033[2K   ${GREEN}✅${RESET} Todo — added: ${DIM}\"ARR slide + hiring plan → Wed EOD\"${RESET}              \n"
 delay 0.4
 
 printf "   ${DIM}Pending...${RESET}"
 delay 0.4
-printf "\r   ${GREEN}✅${RESET} Pending — follow-up deadline set: ${DIM}Feb 20${RESET}                       \n"
+printf "\r\033[2K   ${GREEN}✅${RESET} Pending — follow-up deadline set: ${DIM}Feb 20${RESET}                       \n"
 delay 0.4
 
 printf "   ${DIM}Git...${RESET}"
 delay 0.4
-printf "\r   ${GREEN}✅${RESET} Git — committed & pushed                                        \n"
+printf "\r\033[2K   ${GREEN}✅${RESET} Git — committed & pushed                                        \n"
 delay 0.4
 
 printf "   ${DIM}Archive...${RESET}"
 delay 0.4
-printf "\r   ${GREEN}✅${RESET} Email — thread archived                                         \n"
+printf "\r\033[2K   ${GREEN}✅${RESET} Email — thread archived                                         \n"
 delay 0.3
 
 echo ""
