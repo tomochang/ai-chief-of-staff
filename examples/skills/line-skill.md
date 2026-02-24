@@ -16,6 +16,41 @@ Matrix Bridge（mautrix-line）経由でLINEの未読メッセージを確認し
 
 **迷ったら送らない。聞く。**
 
+## ⚠️ Misdirected Message Prevention (4-layer defense)
+
+**Background:** When processing replies to multiple people in one session, LLMs can mix up drafts and recipients — sending Person A's message to Person B. This is a critical failure mode for messaging assistants.
+
+### Defense Layers
+
+| Layer | Check | When | Implementation |
+|-------|-------|------|----------------|
+| 1 | **One person at a time** | During session | LLM rule (below) |
+| 2 | **Preflight check** | At review time | `line-preflight.sh` (automatic) |
+| 3 | **Preflight check** | At send time | `line-send.sh` (automatic) |
+| 4 | **Approval table** | At send time | Status file (automatic) |
+
+### One-at-a-time rule (mandatory)
+
+When replying to multiple people, strictly follow this sequence:
+
+1. **Create draft for person 1** → present to user
+2. **Get approval**
+3. **review → preflight → send → post-send tasks complete**
+4. **Verify all flags are ✅ before moving to next person**
+
+❌ Forbidden: Creating/presenting drafts for 2+ people simultaneously
+❌ Forbidden: "Batch send" processing
+✅ Required: Complete person 1 → then person 2
+
+### Preflight check (`line-preflight.sh`)
+
+Automatically runs before send. Validates:
+- **Name check**: Draft doesn't contain another person's name
+- **Context check**: Honorifics/nicknames in draft match this recipient's conversation
+- **Duplicate check**: Not re-sending the same content
+
+`PREFLIGHT: FAIL` → **Send blocked (no bypass)**
+
 ## コマンド
 
 ```
@@ -279,6 +314,7 @@ curl -s -X PUT "http://127.0.0.1:8008/_matrix/client/v3/rooms/$(python3 -c "impo
 | ファイル | 用途 |
 |---------|------|
 | `scripts/line-draft.sh` | 下書き用コンテキスト強制収集 |
+| `scripts/line-preflight.sh` | 送信前の宛先-内容整合性チェック |
 | `scripts/line-send.sh` | 送信+検証+ステータス更新 |
 | `scripts/check-messages.js` | 新着チェック |
 | `private/relationships.md` | 人物コンテキスト |

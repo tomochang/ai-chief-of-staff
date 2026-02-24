@@ -20,6 +20,18 @@ echo "🔍 Draft review: $NAME"
 echo "📝 Draft: $DRAFT"
 echo "---"
 
+# 0. Preflight check (recipient-content integrity) — block early at review time
+echo "🛡️ Preflight check..."
+PREFLIGHT_OUT=$(MATRIX_ADMIN_TOKEN="$TOKEN" bash "$SCRIPT_DIR/line-preflight.sh" "$NAME" "$DRAFT" 2>&1) || true
+echo "$PREFLIGHT_OUT"
+echo "---"
+
+if echo "$PREFLIGHT_OUT" | grep -q "PREFLIGHT: FAIL"; then
+  echo ""
+  echo "RESULT: FAIL (preflight)"
+  exit 1
+fi
+
 # 1. Get room and history
 ROOM_ID=$(msg_search_matrix_room "$NAME" 2>/dev/null) || {
     echo "⚠️ Room not found. Skipping review"

@@ -22,6 +22,18 @@ DRAFT_FILE="$MSG_DRAFT_DIR/line-replies-$MSG_TODAY.md"
 # 0. Approval check
 msg_require_approval "$NAME" "$DRAFT_FILE"
 
+# 0.5. Preflight check (recipient-content integrity)
+echo "🛡️ Running preflight check..."
+PREFLIGHT_RESULT=$(MATRIX_ADMIN_TOKEN="$TOKEN" bash "$SCRIPT_DIR/line-preflight.sh" "$NAME" "$MESSAGE" 2>&1) || true
+echo "$PREFLIGHT_RESULT"
+
+if echo "$PREFLIGHT_RESULT" | grep -q "PREFLIGHT: FAIL"; then
+  echo ""
+  echo "🚫 Preflight check failed — send blocked"
+  echo "   Recipient-content integrity issue detected. Please review the draft."
+  exit 1
+fi
+
 # 1. Room search
 echo "🔍 Room search: $NAME"
 ROOM_ID=$(msg_search_matrix_room "$NAME")
