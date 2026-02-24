@@ -26,6 +26,28 @@ Fetch email, Slack, LINE, Messenger, Chatwork, and calendar/todo **in parallel**
 
 ---
 
+## Step 0: Diff-based check (token optimization)
+
+**Don't fetch everything from scratch every time.** If autonomous triage results exist, only fetch the diff.
+
+1. **Check for previous triage results**
+   ```bash
+   ls -t YOUR_WORKSPACE/logs/triage-runs/*/combined.json 2>/dev/null | head -1
+   ```
+   If a file exists, Read it to understand the previous action_required list.
+
+2. **Diff fetch strategy**
+   - Email: `gog gmail search "is:unread newer_than:4h ..."` — only unread since last run
+   - Slack: only messages after the previous run's timestamp
+   - LINE/Messenger: always fetch latest (diff tracking is impractical for bridge-based access)
+   - Calendar/Todo: always fetch latest
+
+3. **No previous results (first run of the day)** → full fetch (proceed to Step 1)
+
+4. **Check memory/session logs** — don't re-process items that were already handled in an earlier session
+
+---
+
 ## Step 1: Parallel data fetch
 
 **Launch 6 Tasks simultaneously.**
