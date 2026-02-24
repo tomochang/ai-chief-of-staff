@@ -1,6 +1,10 @@
-# Claude Code Triage Kit
+# AI Chief of Staff
 
-**Claude Codeを、あなた専用のコミュニケーションOSに。**
+**Claude Codeを、あなた専用の参謀に。**
+
+> **Before:** 毎朝45分のコンテキストスイッチ — 3つの受信トレイを確認、Slackスレッドをチェック、LINEとMessengerをスクロール、カレンダーと突き合わせ、返信を書き、Todoを更新。漏れが出る。フォローアップを忘れる。カレンダーに会議リンクがない。
+>
+> **After:** `/today` と打つ。5分で全チャンネルがトリアージされ、返信案ができ、カレンダーが更新され、何も漏れない — Hookが完了するまで次に進めないから。
 
 朝、ターミナルで `/today` と打つ。それだけで:
 
@@ -256,79 +260,49 @@ LINE・Messengerのスキル例が `examples/skills/` にあります:
 
 ---
 
-## クイックスタート
+## クイックスタート（5分 — メール + カレンダー）
+
+メールトリアージとカレンダー連携の日程調整を5分でセットアップ。Slack・LINE・Messenger・自律実行は不要。
 
 ### 前提条件
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) がインストール・設定済み
-- Gmail CLIツール（本キットは [`gog`](https://github.com/pterm/gog) を使用。Gmail検索・送信・アーカイブができるCLIなら何でも可）
-- Node.js 18+（`calendar-suggest.js` 用）
-- （オプション）Claude CodeにSlack MCPサーバーを設定済み
-- （オプション）Slack Bot Token（`chat:write`, `channels:history`, `im:history` スコープ） — 自律モード用
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) がインストール済み
+- Gmail CLIツール（[`gog`](https://github.com/pterm/gog) 等、Gmail検索・送信・アーカイブができるCLI）
+- Node.js 18+
 
-### 1. テンプレートファイルをコピー
+### 1. 必須ファイルをコピー
 
 ```bash
-# CommandsはClaude Codeのコマンドディレクトリへ
+# コマンド
 cp commands/mail.md ~/.claude/commands/
-cp commands/slack.md ~/.claude/commands/
-cp commands/today.md ~/.claude/commands/
-cp commands/schedule-reply.md ~/.claude/commands/
 
-# Skills、Hooks、Scriptsはワークスペースへ
-mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts/core,scripts/autonomous,private}
+# ワークスペース
+mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts,private}
 cp skills/schedule-reply/SKILL.md ~/your-workspace/skills/schedule-reply/
 cp hooks/post-send.sh ~/your-workspace/hooks/
 cp scripts/calendar-suggest.js ~/your-workspace/scripts/
 cp examples/SOUL.md ~/your-workspace/
-
-# （オプション）LINE/Messengerスクリプト
-cp scripts/core/msg-core.sh ~/your-workspace/scripts/core/
-cp scripts/line-*.sh ~/your-workspace/scripts/
-cp scripts/messenger-*.sh ~/your-workspace/scripts/
-
-# （オプション）自律実行スクリプト
-cp -r scripts/autonomous/ ~/your-workspace/scripts/autonomous/
-
-# （オプション）ルール
-mkdir -p ~/your-workspace/.claude/rules
-cp examples/rules/*.md ~/your-workspace/.claude/rules/
 ```
 
-### 2. 自分の情報を設定
-
-各ファイル内のプレースホルダーを書き換えます。`YOUR_` で検索すると全箇所が見つかります:
+### 2. プレースホルダーを置換
 
 ```bash
-grep -r "YOUR_" commands/ skills/ hooks/ scripts/
+grep -r "YOUR_" commands/mail.md skills/ hooks/ scripts/calendar-suggest.js
 ```
 
-主なプレースホルダー:
+| プレースホルダー | 例 |
+|------------------|-----|
+| `YOUR_EMAIL` | `alice@gmail.com` |
+| `YOUR_WORK_EMAIL` | `alice@company.com` |
+| `YOUR_SIGNATURE` | `Alice` |
+| `YOUR_WORKSPACE` | `~/workspace` |
+| `YOUR_CALENDAR_ID` | `primary` |
 
-| プレースホルダー | 例 | 使用箇所 |
-|------------------|-----|---------|
-| `YOUR_EMAIL` | `alice@gmail.com` | mail.md, today.md |
-| `YOUR_WORK_EMAIL` | `alice@company.com` | mail.md, today.md |
-| `YOUR_NAME` | `Alice` | slack.md, today.md |
-| `YOUR_SIGNATURE` | `Alice` | mail.md, schedule-reply |
-| `YOUR_WORKSPACE` | `~/workspace` | hooks, scripts |
-| `YOUR_CALENDAR_ID` | `primary` | calendar-suggest.js |
-| `YOUR_SKIP_DOMAINS` | `@company-internal.com` | mail.md |
-| `YOUR_SLACK_USER_ID` | `U1234567890` | config.json, slack-api.sh, slack-bridge.sh |
-| `YOUR_SLACK_BOT_TOKEN` | `xoxb-...` | .env |
-| `YOUR_SLACK_MENTIONS` | `@alice, @Alice` | triage-slack.md |
-| `YOUR_MATRIX_USER_PARTIAL` | `ualice` | msg-core.sh, line-sync.sh |
-| `YOUR_VPS_HOST` | `root@your-server.com` | line-rooms.sh |
-| `YOUR_WORK_DOMAIN` | `company.com` | today.md, triage-email.md |
-| `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
-| `YOUR_TASK_LIST_COMMAND` | `gog tasks list` | today.md（オプション） |
-
-### 3. ナレッジファイルを初期化
+### 3. ナレッジファイルを作成
 
 ```bash
 cd ~/your-workspace
 
-# 関係性ノート（知り合い、返信時のコンテキスト）
 cat > private/relationships.md << 'EOF'
 # Relationships
 
@@ -338,7 +312,6 @@ cat > private/relationships.md << 'EOF'
 - 最終: 2/15 Q2ローンチのタイムラインを議論
 EOF
 
-# 好み設定
 cat > private/preferences.md << 'EOF'
 # Preferences
 
@@ -346,10 +319,8 @@ cat > private/preferences.md << 'EOF'
 - 午後優先（11:00以降）
 - 平日のみ、9:00-18:00
 - 候補は3〜5個提示
-- 署名: YOUR_SIGNATURE
 EOF
 
-# Todoリスト
 cat > private/todo.md << 'EOF'
 # Todo
 
@@ -359,9 +330,9 @@ cat > private/todo.md << 'EOF'
 EOF
 ```
 
-### 4. Hookを設定
+### 4. Hook + 権限を設定
 
-プロジェクトの `.claude/settings.local.json` に送信後Hookを追加:
+プロジェクトの `.claude/settings.local.json`:
 
 ```json
 {
@@ -377,41 +348,117 @@ EOF
         ]
       }
     ]
-  }
-}
-```
-
-### 5. 権限を設定
-
-よく使うGmail CLIコマンドの事前承認を `.claude/settings.local.json` に追加:
-
-```json
-{
+  },
   "permissions": {
     "allow": [
       "Bash(gog gmail search*)",
-      "Bash(gog gmail thread*)",
       "Bash(gog gmail send*)",
-      "Bash(gog gmail thread modify*)",
+      "Bash(gog gmail thread*)",
       "Bash(gog calendar*)",
-      "Bash(node */scripts/calendar-suggest.js*)",
-      "Skill(mail)",
-      "Skill(slack)",
-      "Skill(today)",
-      "Skill(schedule-reply)"
+      "Bash(node */scripts/calendar-suggest.js*)"
     ]
   }
 }
 ```
 
-### 6. 試してみる
+### 5. 試してみる
 
 ```bash
 claude /mail          # メールのトリアージ
-claude /slack         # Slackのトリアージ
-claude /today         # 朝のブリーフィング（メール + Slack + カレンダー）
 claude /schedule-reply "来週の田中さんとのMTGについて返信して"
 ```
+
+これでメールトリアージとHook強制の送信後処理が動きます。さらにチャンネルを追加するには↓
+
+---
+
+## 追加セットアップ
+
+### Slackを追加
+
+1. Claude Codeに[Slack MCPサーバー](https://github.com/anthropics/claude-code)を設定
+2. `commands/slack.md` を `~/.claude/commands/` にコピー
+3. コマンドファイル内の `YOUR_NAME`, `YOUR_SLACK_MENTIONS` を置換
+4. 権限に `"Skill(slack)"` を追加
+
+```bash
+claude /slack         # Slackメンション・DMのトリアージ
+```
+
+### LINEを追加
+
+Matrixホームサーバー + [mautrix-line](https://github.com/mautrix/line) が必要。
+
+```bash
+cp scripts/core/msg-core.sh ~/your-workspace/scripts/core/
+cp scripts/line-*.sh ~/your-workspace/scripts/
+```
+
+スクリプト内の `YOUR_MATRIX_SERVER`, `YOUR_MATRIX_ADMIN_TOKEN`, `YOUR_MATRIX_USER_PARTIAL`, `YOUR_VPS_HOST` を置換。完全なワークフローは `examples/skills/line-skill.md` を参照。
+
+### Messengerを追加
+
+Messengerにログイン済みのGoogle Chrome（macOS）が必要。
+
+```bash
+cp scripts/messenger-*.sh ~/your-workspace/scripts/
+```
+
+スクリプト内の `YOUR_MATRIX_USER_PARTIAL` を置換。Chrome CDP/AppleScriptワークフローは `examples/skills/messenger-skill.md` を参照。
+
+### 統合 `/today` コマンドを追加
+
+使いたいチャンネルの設定が完了したら:
+
+```bash
+cp commands/today.md ~/.claude/commands/
+```
+
+`YOUR_LINE_*`, `YOUR_MESSENGER_*`, `YOUR_WORK_DOMAIN` プレースホルダーを置換。未設定のチャンネルは自動スキップ。
+
+```bash
+claude /today         # 朝のブリーフィング — 設定済み全チャンネル
+```
+
+### 自律実行を追加
+
+スケジュールで無人トリアージを実行:
+
+```bash
+cp -r scripts/autonomous/ ~/your-workspace/scripts/autonomous/
+```
+
+自律スクリプト内の `YOUR_SLACK_USER_ID`, `YOUR_SLACK_BOT_TOKEN`, `YOUR_WORK_EMAIL`, `YOUR_EMAIL` を置換。launchd plist（`examples/launchd/` 参照）またはcronジョブを設定。
+
+### ルールを追加
+
+毎セッション自動で適用される行動制約:
+
+```bash
+mkdir -p ~/your-workspace/.claude/rules
+cp examples/rules/*.md ~/your-workspace/.claude/rules/
+```
+
+### 全プレースホルダー一覧
+
+| プレースホルダー | 例 | 使用箇所 |
+|------------------|-----|---------|
+| `YOUR_EMAIL` | `alice@gmail.com` | mail.md, today.md |
+| `YOUR_WORK_EMAIL` | `alice@company.com` | mail.md, today.md |
+| `YOUR_NAME` | `Alice` | slack.md, today.md |
+| `YOUR_SIGNATURE` | `Alice` | mail.md, schedule-reply |
+| `YOUR_WORKSPACE` | `~/workspace` | hooks, scripts |
+| `YOUR_CALENDAR_ID` | `primary` | calendar-suggest.js |
+| `YOUR_SKIP_DOMAINS` | `@company-internal.com` | mail.md |
+| `YOUR_SLACK_USER_ID` | `U1234567890` | config.json, slack-api.sh, slack-bridge.sh |
+| `YOUR_SLACK_BOT_TOKEN` | `xoxb-...` | .env |
+| `YOUR_SLACK_MENTIONS` | `@alice, @Alice` | triage-slack.md |
+| `YOUR_MATRIX_USER_PARTIAL` | `ualice` | msg-core.sh, line-sync.sh |
+| `YOUR_VPS_HOST` | `root@your-server.com` | line-rooms.sh |
+| `YOUR_MATRIX_SERVER` | `http://localhost:8008` | today.md, msg-core.sh |
+| `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md, msg-core.sh |
+| `YOUR_WORK_DOMAIN` | `company.com` | today.md, triage-email.md |
+| `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
 
 ---
 

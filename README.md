@@ -2,6 +2,10 @@
 
 **Turn Claude Code into your personal chief of staff.**
 
+> **Before:** Every morning, 45 minutes of context-switching — scan 3 inboxes, check Slack threads, scroll LINE and Messenger, cross-reference calendar, draft replies, update your todo list. Things fall through the cracks. You forget to follow up. Calendar entries are missing meeting links.
+>
+> **After:** You type `/today`. Five minutes later, everything is triaged, replies are drafted, calendar is updated, and nothing is forgotten — because a hook physically blocks you from moving on until it's done.
+
 Every morning, you type `/today` in your terminal. That's it:
 
 - **20 unread emails, auto-classified** — bot notifications and newsletters get archived without you ever seeing them. Only messages that actually need your attention show up
@@ -280,87 +284,49 @@ Example skills for LINE and Messenger are in `examples/skills/`:
 
 ---
 
-## Quick Start
+## Quick Start (5 minutes — Email + Calendar)
+
+Get email triage and calendar-aware scheduling working in 5 minutes. No Slack, LINE, Messenger, or autonomous mode needed.
 
 ### Prerequisites
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and configured
-- A Gmail CLI tool (this kit uses [`gog`](https://github.com/pterm/gog), but any CLI that can search/send/archive Gmail works)
-- Node.js 18+ (for `calendar-suggest.js`)
-- (Optional) Slack MCP server configured in Claude Code
-- (Optional) Slack Bot Token with `chat:write`, `channels:history`, `im:history` scopes — for autonomous mode
-- (Optional) Matrix bridge for LINE (mautrix-line)
-- (Optional) Google Chrome for Messenger (Chrome CDP + AppleScript)
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
+- A Gmail CLI tool ([`gog`](https://github.com/pterm/gog) or any CLI that can search/send/archive Gmail)
+- Node.js 18+
 
-### 1. Copy template files
+### 1. Copy the essentials
 
 ```bash
-# Commands go in your Claude Code commands directory
+# Commands
 cp commands/mail.md ~/.claude/commands/
-cp commands/today.md ~/.claude/commands/
 
-# Skills, hooks, and scripts go in your workspace
-mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts/core,scripts/autonomous,private}
+# Workspace files
+mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts,private}
 cp skills/schedule-reply/SKILL.md ~/your-workspace/skills/schedule-reply/
 cp hooks/post-send.sh ~/your-workspace/hooks/
 cp scripts/calendar-suggest.js ~/your-workspace/scripts/
 cp examples/SOUL.md ~/your-workspace/
-
-# (Optional) LINE/Messenger scripts
-cp scripts/core/msg-core.sh ~/your-workspace/scripts/core/
-cp scripts/line-*.sh ~/your-workspace/scripts/
-cp scripts/messenger-*.sh ~/your-workspace/scripts/
-
-# (Optional) Autonomous scripts
-cp -r scripts/autonomous/ ~/your-workspace/scripts/autonomous/
-
-# (Optional) Rules
-mkdir -p ~/your-workspace/.claude/rules
-cp examples/rules/*.md ~/your-workspace/.claude/rules/
 ```
 
-### 2. Configure your identity
-
-Edit the placeholder values in each file. Search for `YOUR_` to find all placeholders:
+### 2. Replace placeholders
 
 ```bash
-grep -r "YOUR_" commands/ skills/ hooks/ scripts/
+grep -r "YOUR_" commands/mail.md skills/ hooks/ scripts/calendar-suggest.js
 ```
 
-Key placeholders to replace:
+| Placeholder | Example |
+|-------------|---------|
+| `YOUR_EMAIL` | `alice@gmail.com` |
+| `YOUR_WORK_EMAIL` | `alice@company.com` |
+| `YOUR_SIGNATURE` | `Alice` |
+| `YOUR_WORKSPACE` | `~/workspace` |
+| `YOUR_CALENDAR_ID` | `primary` |
 
-| Placeholder | Example | Used in |
-|-------------|---------|---------|
-| `YOUR_EMAIL` | `alice@gmail.com` | mail.md, today.md |
-| `YOUR_WORK_EMAIL` | `alice@company.com` | mail.md, today.md |
-| `YOUR_NAME` | `Alice` | slack.md, today.md |
-| `YOUR_SIGNATURE` | `Alice` | mail.md, schedule-reply |
-| `YOUR_WORKSPACE` | `~/workspace` | hooks, scripts |
-| `YOUR_CALENDAR_ID` | `primary` | calendar-suggest.js |
-| `YOUR_SKIP_DOMAINS` | `@company-internal.com` | mail.md |
-| `YOUR_SLACK_USER_ID` | `U1234567890` | config.json, slack-api.sh, slack-bridge.sh |
-| `YOUR_SLACK_BOT_TOKEN` | `xoxb-...` | .env |
-| `YOUR_SLACK_MENTIONS` | `@alice, @Alice` | triage-slack.md |
-| `YOUR_MATRIX_USER_PARTIAL` | `ualice` | msg-core.sh, line-sync.sh |
-| `YOUR_VPS_HOST` | `root@your-server.com` | line-rooms.sh |
-| `YOUR_LINE_SYNC_COMMAND` | `bash scripts/line-sync.sh` | today.md |
-| `YOUR_LINE_SEND_COMMAND` | `bash scripts/line-send.sh` | today.md |
-| `YOUR_MESSENGER_SEND_COMMAND` | `bash scripts/messenger-send.sh` | today.md |
-| `YOUR_LINE_SKIP_ACCOUNTS` | `Starbucks, Nike, ...` | today.md |
-| `YOUR_MATRIX_SERVER` | `http://localhost:8008` | today.md, msg-core.sh |
-| `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md, msg-core.sh |
-| `YOUR_WORK_DOMAIN` | `company.com` | today.md, triage-email.md |
-| `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
-| `YOUR_TASK_LIST_COMMAND` | `gog tasks list` | today.md (optional) |
-
-### 3. Set up your knowledge files
-
-Create the initial knowledge files:
+### 3. Create your knowledge files
 
 ```bash
 cd ~/your-workspace
 
-# Your relationship notes (who you know, context for replies)
 cat > private/relationships.md << 'EOF'
 # Relationships
 
@@ -370,7 +336,6 @@ cat > private/relationships.md << 'EOF'
 - Last: 2/15 discussed timeline for Q2 launch
 EOF
 
-# Your preferences
 cat > private/preferences.md << 'EOF'
 # Preferences
 
@@ -378,10 +343,8 @@ cat > private/preferences.md << 'EOF'
 - Prefer afternoons (11:00+)
 - Weekdays only, 9:00-18:00
 - Offer 3-5 time candidates
-- Signature: YOUR_SIGNATURE
 EOF
 
-# Your todo list
 cat > private/todo.md << 'EOF'
 # Todo
 
@@ -391,9 +354,9 @@ cat > private/todo.md << 'EOF'
 EOF
 ```
 
-### 4. Configure the hook
+### 4. Configure hook + permissions
 
-Add the post-send hook to your Claude Code settings. In your project's `.claude/settings.local.json`:
+In your project's `.claude/settings.local.json`:
 
 ```json
 {
@@ -409,40 +372,117 @@ Add the post-send hook to your Claude Code settings. In your project's `.claude/
         ]
       }
     ]
-  }
-}
-```
-
-### 5. Set up permissions
-
-Add pre-approved permissions for the CLI commands you'll use frequently. In `.claude/settings.local.json`:
-
-```json
-{
+  },
   "permissions": {
     "allow": [
       "Bash(gog gmail search*)",
-      "Bash(gog gmail thread*)",
       "Bash(gog gmail send*)",
-      "Bash(gog gmail thread modify*)",
+      "Bash(gog gmail thread*)",
       "Bash(gog calendar*)",
-      "Bash(node */scripts/calendar-suggest.js*)",
-      "Skill(mail)",
-      "Skill(slack)",
-      "Skill(today)",
-      "Skill(schedule-reply)"
+      "Bash(node */scripts/calendar-suggest.js*)"
     ]
   }
 }
 ```
 
-### 6. Try it
+### 5. Try it
 
 ```bash
 claude /mail          # Triage your email
-claude /today         # Morning briefing (email + Slack + LINE + Messenger + calendar)
 claude /schedule-reply "Reply to John about next week's meeting"
 ```
+
+You now have email triage with hook-enforced post-send processing. Read on to add more channels.
+
+---
+
+## Advanced Setup
+
+### Add Slack
+
+1. Configure the [Slack MCP server](https://github.com/anthropics/claude-code) in Claude Code
+2. Copy `commands/slack.md` to `~/.claude/commands/`
+3. Replace `YOUR_NAME` and `YOUR_SLACK_MENTIONS` in the command file
+4. Add `"Skill(slack)"` to your permissions
+
+```bash
+claude /slack         # Triage Slack mentions and DMs
+```
+
+### Add LINE
+
+Requires a Matrix homeserver with [mautrix-line](https://github.com/mautrix/line).
+
+```bash
+cp scripts/core/msg-core.sh ~/your-workspace/scripts/core/
+cp scripts/line-*.sh ~/your-workspace/scripts/
+```
+
+Replace `YOUR_MATRIX_SERVER`, `YOUR_MATRIX_ADMIN_TOKEN`, `YOUR_MATRIX_USER_PARTIAL`, `YOUR_VPS_HOST` in the scripts. See `examples/skills/line-skill.md` for the full workflow.
+
+### Add Messenger
+
+Requires Google Chrome with Messenger logged in (macOS).
+
+```bash
+cp scripts/messenger-*.sh ~/your-workspace/scripts/
+```
+
+Replace `YOUR_MATRIX_USER_PARTIAL` in the scripts. See `examples/skills/messenger-skill.md` for the Chrome CDP/AppleScript workflow.
+
+### Add the unified `/today` command
+
+Once you have your desired channels configured:
+
+```bash
+cp commands/today.md ~/.claude/commands/
+```
+
+Replace the `YOUR_LINE_*`, `YOUR_MESSENGER_*`, and `YOUR_WORK_DOMAIN` placeholders. Unconfigured channels are automatically skipped.
+
+```bash
+claude /today         # Morning briefing — all configured channels
+```
+
+### Add autonomous execution
+
+Set up unattended triage on a schedule:
+
+```bash
+cp -r scripts/autonomous/ ~/your-workspace/scripts/autonomous/
+```
+
+Replace `YOUR_SLACK_USER_ID`, `YOUR_SLACK_BOT_TOKEN`, `YOUR_WORK_EMAIL`, `YOUR_EMAIL` in the autonomous scripts. Then install a launchd plist (see `examples/launchd/`) or cron job.
+
+### Add rules
+
+Copy behavioral constraints that fire on every Claude Code session:
+
+```bash
+mkdir -p ~/your-workspace/.claude/rules
+cp examples/rules/*.md ~/your-workspace/.claude/rules/
+```
+
+### All placeholders
+
+| Placeholder | Example | Used in |
+|-------------|---------|---------|
+| `YOUR_EMAIL` | `alice@gmail.com` | mail.md, today.md |
+| `YOUR_WORK_EMAIL` | `alice@company.com` | mail.md, today.md |
+| `YOUR_NAME` | `Alice` | slack.md, today.md |
+| `YOUR_SIGNATURE` | `Alice` | mail.md, schedule-reply |
+| `YOUR_WORKSPACE` | `~/workspace` | hooks, scripts |
+| `YOUR_CALENDAR_ID` | `primary` | calendar-suggest.js |
+| `YOUR_SKIP_DOMAINS` | `@company-internal.com` | mail.md |
+| `YOUR_SLACK_USER_ID` | `U1234567890` | config.json, slack-api.sh, slack-bridge.sh |
+| `YOUR_SLACK_BOT_TOKEN` | `xoxb-...` | .env |
+| `YOUR_SLACK_MENTIONS` | `@alice, @Alice` | triage-slack.md |
+| `YOUR_MATRIX_USER_PARTIAL` | `ualice` | msg-core.sh, line-sync.sh |
+| `YOUR_VPS_HOST` | `root@your-server.com` | line-rooms.sh |
+| `YOUR_MATRIX_SERVER` | `http://localhost:8008` | today.md, msg-core.sh |
+| `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md, msg-core.sh |
+| `YOUR_WORK_DOMAIN` | `company.com` | today.md, triage-email.md |
+| `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
 
 ---
 
