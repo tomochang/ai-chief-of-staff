@@ -663,6 +663,25 @@ A: No. Start with email only (`/mail`), then add channels as you set up integrat
 
 ---
 
+## Community Integrations
+
+This project started with the channels I use daily. The community is already adding more:
+
+| Channel | Status | Contributed by |
+|---------|--------|---------------|
+| Email (Gmail) | ✅ Built-in | — |
+| Slack | ✅ Built-in | — |
+| LINE | ✅ Built-in | — |
+| Messenger | ✅ Built-in | — |
+| Chatwork | ✅ v1.0.0 | [@jagaimo-yaro](https://github.com/jagaimo-yaro) |
+| **Microsoft Teams** | 🙏 Wanted | [→ How to add a channel](CONTRIBUTING.md#adding-a-new-channel) |
+| **Discord** | 🙏 Wanted | [→ How to add a channel](CONTRIBUTING.md#adding-a-new-channel) |
+| **Telegram** | 🙏 Wanted | [→ How to add a channel](CONTRIBUTING.md#adding-a-new-channel) |
+| **WhatsApp** | 🙏 Wanted | [→ How to add a channel](CONTRIBUTING.md#adding-a-new-channel) |
+| **iMessage** | 🙏 Wanted | [→ How to add a channel](CONTRIBUTING.md#adding-a-new-channel) |
+
+---
+
 ## Credits
 
 Built with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) by Anthropic.
