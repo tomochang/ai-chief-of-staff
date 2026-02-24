@@ -158,7 +158,7 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 | **Email** | `gog gmail search` (or any Gmail CLI) | `gog gmail send` | Auto-archive |
 | **Slack** | Slack MCP server | Slack MCP `conversations_add_message` | — |
 | **LINE** | Matrix bridge (mautrix-line) or custom sync script | Matrix bridge or custom send script | `private/drafts/line-replies-YYYY-MM-DD.md` |
-| **Messenger** | Matrix bridge (mautrix-meta) or browser automation | Matrix bridge or browser automation | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
+| **Messenger** | Chrome CDP (Playwright) | Chrome AppleScript | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
 
 LINE and Messenger use a **3-layer architecture**: skill rules (classification, tone) → scripts (context collection, sending, validation) → data files (triage status, relationship notes, send logs).
 
@@ -246,33 +246,37 @@ To use: copy desired rules to your workspace's `.claude/rules/` directory.
 
 ## LINE & Messenger Scripts
 
-Scripts for LINE and Messenger messaging, built on a shared core (`scripts/core/msg-core.sh`).
+Scripts for LINE and Messenger messaging. LINE uses a Matrix bridge; Messenger uses Chrome CDP/AppleScript.
 
 ### Prerequisites
 
+**LINE:**
 - A [Matrix](https://matrix.org/) homeserver (e.g., Synapse)
-- [mautrix-line](https://github.com/mautrix/line) bridge for LINE
-- [mautrix-meta](https://github.com/mautrix/meta) bridge for Messenger
+- [mautrix-line](https://github.com/mautrix/line) bridge
 - Environment variables: `MATRIX_SERVER`, `MATRIX_ADMIN_TOKEN`
+
+**Messenger:**
+- Google Chrome with Messenger logged in (macOS)
+- Node.js + Playwright (for Chrome CDP unread check)
 
 ### Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `core/msg-core.sh` | Shared Matrix API functions (room listing, message fetching, sending) |
-| `line-sync.sh` | Sync LINE messages via Matrix bridge |
-| `line-draft.sh` | Collect context for LINE reply drafts |
-| `line-review.sh` | Validate drafts (emoji, tone, length) |
-| `line-send.sh` | Send LINE message + verify delivery |
-| `line-rooms.sh` | Search LINE rooms via VPS Matrix bridge |
-| `messenger-draft.sh` | Collect context for Messenger reply drafts |
-| `messenger-send.sh` | Send Messenger message (Matrix + Chrome fallback) |
+| Script | Channel | Purpose |
+|--------|---------|---------|
+| `core/msg-core.sh` | Shared | Utilities (relationship lookup, status tracking, Matrix API for LINE) |
+| `line-sync.sh` | LINE | Sync messages via Matrix bridge |
+| `line-draft.sh` | LINE | Collect context for reply drafts |
+| `line-review.sh` | LINE | Validate drafts (emoji, tone, length) |
+| `line-send.sh` | LINE | Send via Matrix + verify delivery |
+| `line-rooms.sh` | LINE | Search rooms via VPS Matrix bridge |
+| `messenger-draft.sh` | Messenger | Collect context via Chrome CDP (Matrix fallback) |
+| `messenger-send.sh` | Messenger | Send via Chrome AppleScript |
 
 ### Skills
 
 Example skills for LINE and Messenger are in `examples/skills/`:
 - `line-skill.md` — Full LINE workflow with phases, rules, and troubleshooting
-- `messenger-skill.md` — Full Messenger workflow with Chrome CDP/AppleScript fallback
+- `messenger-skill.md` — Full Messenger workflow with Chrome CDP/AppleScript
 
 ---
 
@@ -285,7 +289,8 @@ Example skills for LINE and Messenger are in `examples/skills/`:
 - Node.js 18+ (for `calendar-suggest.js`)
 - (Optional) Slack MCP server configured in Claude Code
 - (Optional) Slack Bot Token with `chat:write`, `channels:history`, `im:history` scopes — for autonomous mode
-- (Optional) Matrix bridge for LINE/Messenger (mautrix-line, mautrix-meta)
+- (Optional) Matrix bridge for LINE (mautrix-line)
+- (Optional) Google Chrome for Messenger (Chrome CDP + AppleScript)
 
 ### 1. Copy template files
 
@@ -526,7 +531,7 @@ ai-chief-of-staff/
 │   ├── line-send.sh               # LINE send + verify
 │   ├── line-rooms.sh              # LINE room search
 │   ├── messenger-draft.sh         # Messenger draft context
-│   ├── messenger-send.sh          # Messenger send (Matrix + Chrome)
+│   ├── messenger-send.sh          # Messenger send (Chrome AppleScript)
 │   └── autonomous/
 │       ├── dispatcher.sh          # Entry point for all autonomous modes
 │       ├── today.sh               # 5-channel unified triage
@@ -596,9 +601,13 @@ Prompt instructions get forgotten. You can write "ALWAYS update the calendar aft
 
 Interactive mode requires you to open a terminal and type a command. The autonomous layer (`scripts/autonomous/`) runs on a schedule via launchd or cron, using `claude -p` (non-interactive mode). This means your triage happens even when you're not at your desk. Results are posted to Slack, and the HITL approval flow ensures you maintain control.
 
-### Why a Matrix bridge for LINE/Messenger?
+### Why a Matrix bridge for LINE?
 
-Direct APIs for LINE and Messenger require business accounts or have restrictive rate limits. A Matrix bridge (mautrix-line, mautrix-meta) provides a unified API layer that works with personal accounts. The bridge handles authentication, message syncing, and delivery — your scripts just talk to the Matrix HTTP API. Browser automation serves as a fallback when the bridge is down.
+The LINE API requires a business account. A Matrix bridge ([mautrix-line](https://github.com/mautrix/line)) provides a unified API layer that works with personal accounts. The bridge handles authentication, message syncing, and delivery — your scripts just talk to the Matrix HTTP API.
+
+### Why Chrome CDP/AppleScript for Messenger?
+
+Messenger has no personal-use API. Instead of a bridge, we use Chrome CDP (Playwright) to read unread messages and Chrome AppleScript to send them. This requires Chrome running with Messenger logged in on a Mac. `document.execCommand('insertText')` handles React-compatible text input, and `KeyboardEvent('keydown', {key:'Enter'})` triggers send. The scripts handle focus management, delays for Messenger's reactive updates, and E2EE chat URL patterns.
 
 ---
 

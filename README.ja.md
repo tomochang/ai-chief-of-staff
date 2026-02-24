@@ -222,33 +222,37 @@ crontab -e
 
 ## LINE・Messengerスクリプト
 
-共有コア（`scripts/core/msg-core.sh`）上に構築されたLINE・Messengerメッセージングスクリプト。
+LINEはMatrixブリッジ、MessengerはChrome CDP/AppleScript経由のメッセージングスクリプト。
 
 ### 前提条件
 
+**LINE:**
 - [Matrix](https://matrix.org/) ホームサーバー（例: Synapse）
-- LINEブリッジ: [mautrix-line](https://github.com/mautrix/line)
-- Messengerブリッジ: [mautrix-meta](https://github.com/mautrix/meta)
+- [mautrix-line](https://github.com/mautrix/line) ブリッジ
 - 環境変数: `MATRIX_SERVER`, `MATRIX_ADMIN_TOKEN`
+
+**Messenger:**
+- Messengerにログイン済みのGoogle Chrome（macOS）
+- Node.js + Playwright（Chrome CDPによる未読チェック用）
 
 ### スクリプト一覧
 
-| スクリプト | 目的 |
-|-----------|------|
-| `core/msg-core.sh` | 共有Matrix API関数（ルーム一覧、メッセージ取得、送信） |
-| `line-sync.sh` | Matrixブリッジ経由のLINEメッセージ同期 |
-| `line-draft.sh` | LINE返信ドラフトのコンテキスト収集 |
-| `line-review.sh` | ドラフト検証（絵文字、トーン、長さ） |
-| `line-send.sh` | LINEメッセージ送信 + 配信確認 |
-| `line-rooms.sh` | VPS Matrixブリッジ経由のルーム検索 |
-| `messenger-draft.sh` | Messenger返信ドラフトのコンテキスト収集 |
-| `messenger-send.sh` | Messengerメッセージ送信（Matrix + Chromeフォールバック） |
+| スクリプト | チャネル | 目的 |
+|-----------|---------|------|
+| `core/msg-core.sh` | 共有 | ユーティリティ（関係性検索、ステータス管理、LINE用Matrix API） |
+| `line-sync.sh` | LINE | Matrixブリッジ経由のメッセージ同期 |
+| `line-draft.sh` | LINE | 返信ドラフトのコンテキスト収集 |
+| `line-review.sh` | LINE | ドラフト検証（絵文字、トーン、長さ） |
+| `line-send.sh` | LINE | Matrix経由で送信 + 配信確認 |
+| `line-rooms.sh` | LINE | VPS Matrixブリッジ経由のルーム検索 |
+| `messenger-draft.sh` | Messenger | Chrome CDP経由のコンテキスト収集（Matrixフォールバック） |
+| `messenger-send.sh` | Messenger | Chrome AppleScript経由で送信 |
 
 ### スキル
 
 LINE・Messengerのスキル例が `examples/skills/` にあります:
 - `line-skill.md` — フェーズ、ルール、トラブルシューティングを含む完全なLINEワークフロー
-- `messenger-skill.md` — Chrome CDP/AppleScriptフォールバックを含む完全なMessengerワークフロー
+- `messenger-skill.md` — Chrome CDP/AppleScriptによる完全なMessengerワークフロー
 
 ---
 
@@ -493,7 +497,7 @@ ai-chief-of-staff/
 │   ├── line-send.sh               # LINE送信 + 配信確認
 │   ├── line-rooms.sh              # LINEルーム検索
 │   ├── messenger-draft.sh         # Messengerドラフトコンテキスト
-│   ├── messenger-send.sh          # Messenger送信（Matrix + Chrome）
+│   ├── messenger-send.sh          # Messenger送信（Chrome AppleScript）
 │   └── autonomous/
 │       ├── dispatcher.sh          # 全自律モードのエントリポイント
 │       ├── today.sh               # 5チャンネル統合トリアージ
