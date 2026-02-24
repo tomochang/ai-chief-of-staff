@@ -1,7 +1,7 @@
 # AI Chief of Staff
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/github/v/release/tomochang/ai-chief-of-staff)](https://github.com/tomochang/ai-chief-of-staff/releases)
+[![Release](https://img.shields.io/badge/release-v1.0.0-blue)](https://github.com/tomochang/ai-chief-of-staff/releases/tag/v1.0.0)
 [![Claude Code](https://img.shields.io/badge/Built%20with-Claude%20Code-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
 
 **Turn Claude Code into your personal chief of staff.**
