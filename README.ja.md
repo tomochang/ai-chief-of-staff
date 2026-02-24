@@ -2,24 +2,25 @@
 
 **Claude Codeを、あなた専用の参謀に。**
 
-> **Before:** 毎朝45分のコンテキストスイッチ — 3つの受信トレイを確認、Slackスレッドをチェック、LINEとMessengerをスクロール、カレンダーと突き合わせ、返信を書き、Todoを更新。漏れが出る。フォローアップを忘れる。カレンダーに会議リンクがない。
+> **Before:** 毎朝45分のコンテキストスイッチ — 3つの受信トレイを確認、Slackスレッドをチェック、LINE・Messenger・Chatworkをスクロール、カレンダーと突き合わせ、返信を書き、Todoを更新。漏れが出る。フォローアップを忘れる。カレンダーに会議リンクがない。
 >
 > **After:** `/today` と打つ。5分で全チャンネルがトリアージされ、返信案ができ、カレンダーが更新され、何も漏れない — Hookが完了するまで次に進めないから。
 
-[UPSIDER](https://corp.up-sider.com/en/)（法人カードスタートアップ、[みずほフィナンシャルグループ](https://www.mizuhogroup.com/)が買収）の副社長をしています。取締役会、投資家コール、1日5件以上の外部ミーティング — メール、Slack、LINE、Messengerを横断して、何も漏らさない仕組みが必要でした。2026年1月から毎日使っています。
+[UPSIDER](https://corp.up-sider.com/en/)（法人カードスタートアップ、[みずほフィナンシャルグループ](https://www.mizuhogroup.com/)が買収）の副社長をしています。取締役会、投資家コール、1日5件以上の外部ミーティング — メール、Slack、LINE、Messenger、Chatworkを横断して、何も漏らさない仕組みが必要でした。2026年1月から毎日使っています。
 
 朝、ターミナルで `/today` と打つ。それだけで:
 
 - **未読メール20件を自動分類** — Bot通知やニュースレターは見せずにアーカイブ。本当に返信が必要なものだけ表示
 - **Slackのメンション・DMを一覧化** — 未回答のスレッドだけ浮かび上がらせる
 - **LINE・Messengerのメッセージをトリアージ** — 公式アカウントはスキップ、返信が必要な1対1チャットだけ表示
+- **Chatworkのルームをトリアージ** — Bot通知はスキップ、`[To:あなた]` のメッセージと未返信DMを検出
 - **今日のカレンダーを表示** — 会議リンクが未登録なら、メールから自動補完。非定例会議には準備フラグ付き
 - **滞留タスクと未返信を一括トリアージ** — 3日以上放置の返信待ちを検出、全項目に判断を下すまで終わらない
 - **要返信メールに返信案を生成** — あなたの文体・署名・過去のやり取りを踏まえて
 - **日程調整なら空き時間を自動計算** — カレンダーから候補を抽出、午前NGなどの好みも反映
 - **送信後のカレンダー登録・Todo更新・記録を全自動** — Hookで強制するから、抜け漏れゼロ
 
-やっていることは単純です。メール・Slack・LINE・Messenger・カレンダーという5つの入力を、**分類 → トリアージ → 判断支援 → 実行 → 記録**のパイプラインに通す。Claude Codeの `/command` をワークフローエンジンとして使い、Hookで信頼性を担保し、Gitでナレッジを永続化する。
+やっていることは単純です。メール・Slack・LINE・Messenger・Chatwork・カレンダーという6つの入力を、**分類 → トリアージ → 判断支援 → 実行 → 記録**のパイプラインに通す。Claude Codeの `/command` をワークフローエンジンとして使い、Hookで信頼性を担保し、Gitでナレッジを永続化する。
 
 コードはほぼ書かない。コアはMarkdownのプロンプト。HookとScriptは薄いbash/JSのグルーコードです。**プロンプトファイルを編集するだけで動作が変わります。**
 
@@ -31,7 +32,7 @@
 
 ## クイックスタート（5分 — メール + カレンダー）
 
-メールトリアージとカレンダー連携の日程調整を5分でセットアップ。Slack・LINE・Messenger・自律実行は不要。
+メールトリアージとカレンダー連携の日程調整を5分でセットアップ。Slack・LINE・Messenger・Chatwork・自律実行は不要。
 
 ### 前提条件
 
@@ -174,6 +175,7 @@ claude /schedule-reply "来週の田中さんとのMTGについて返信して"
 | **Slack** | Slack MCPサーバー | Slack MCP `conversations_add_message` | — |
 | **LINE** | Matrixブリッジ（mautrix-line）またはカスタム同期スクリプト | Matrixブリッジまたはカスタム送信スクリプト | `private/drafts/line-replies-YYYY-MM-DD.md` |
 | **Messenger** | Chrome CDP（Playwright） | Chrome AppleScript | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
+| **Chatwork** | `chatwork-fetch.sh`（curl + jq） | Chatwork REST API（curl） | — |
 
 LINE・Messengerは**3層アーキテクチャ**: スキルルール（分類、トーン） → スクリプト（コンテキスト収集、送信、検証） → データファイル（トリアージ状態、関係性ノート、送信ログ）。
 
@@ -184,7 +186,7 @@ LINE・Messengerは**3層アーキテクチャ**: スキルルール（分類、
 ```
 ┌─────────────────────────────────────────────────┐
 │  Commands (.claude/commands/*.md)                │
-│  /mail  /slack  /today  /schedule-reply          │
+│  /mail  /slack  /chatwork  /today  /schedule-reply│
 │  ↳ ユーザー向けエントリポイント（対話型）       │
 └──────────────────┬──────────────────────────────┘
                    │
@@ -238,7 +240,7 @@ LINE・Messengerは**3層アーキテクチャ**: スキルルール（分類、
 
 **Scriptが決定的ロジックを担当。** カレンダーの空き時間計算にLLMは不要です。`calendar-suggest.js` がカレンダーを取得し、空きスロットを見つけ、好み（午前NG、移動バッファ等）を反映し、フォーマット済みの候補を出力します。LINE・Messengerスクリプトは共有メッセージングコアを通じてメッセージの同期・コンテキスト収集・送信を処理します。
 
-**自律レイヤーが無人で動作する。** `scripts/autonomous/` には、launchd/cronでスケジュール実行されるスクリプトがあります。`claude -p`（非対話モード）を使用。dispatcherが各ハンドラに振り分けます: `today.sh` は5チャンネルを並列トリアージ、`slack-bridge.sh` はSlack DMを双方向Claudeインターフェースに変換、`notify.sh` は結果をSlack DMで通知します。
+**自律レイヤーが無人で動作する。** `scripts/autonomous/` には、launchd/cronでスケジュール実行されるスクリプトがあります。`claude -p`（非対話モード）を使用。dispatcherが各ハンドラに振り分けます: `today.sh` は6チャンネルを並列トリアージ、`slack-bridge.sh` はSlack DMを双方向Claudeインターフェースに変換、`notify.sh` は結果をSlack DMで通知します。
 
 **Knowledge Filesがあなたの記憶。** Claude Codeのセッションはステートレスです。関係性、好み、Todoはマークダウンファイルに永続化され、Gitでバージョン管理されます。毎セッション開始時にこれらを読み込むことで、継続性が保たれます。
 
@@ -278,6 +280,23 @@ cp scripts/messenger-*.sh ~/your-workspace/scripts/
 
 スクリプト内の `YOUR_MATRIX_USER_PARTIAL` を置換。Chrome CDP/AppleScriptワークフローは `examples/skills/messenger-skill.md` を参照。
 
+### Chatworkを追加
+
+Chatwork APIトークンと `jq` が必要。
+
+```bash
+cp commands/chatwork.md ~/.claude/commands/
+cp scripts/chatwork-fetch.sh ~/your-workspace/scripts/
+export CHATWORK_API_TOKEN="your-token-here"
+```
+
+```bash
+claude /chatwork         # Chatworkメッセージのトリアージ
+claude /chatwork check   # 直近4hのサマリー
+```
+
+> **コミュニティ貢献。** このインテグレーションは [@jagaimo-yaro](https://github.com/jagaimo-yaro) によるコントリビューションです。問題があれば報告してください。
+
 ### 統合 `/today` コマンドを追加
 
 使いたいチャンネルの設定が完了したら:
@@ -286,7 +305,7 @@ cp scripts/messenger-*.sh ~/your-workspace/scripts/
 cp commands/today.md ~/.claude/commands/
 ```
 
-`YOUR_LINE_*`, `YOUR_MESSENGER_*`, `YOUR_WORK_DOMAIN` プレースホルダーを置換。未設定のチャンネルは自動スキップ。
+`YOUR_LINE_*`, `YOUR_MESSENGER_*`, `CHATWORK_API_TOKEN`, `YOUR_WORK_DOMAIN` プレースホルダーを置換。未設定のチャンネルは自動スキップ。
 
 ```bash
 claude /today         # 朝のブリーフィング — 設定済み全チャンネル
@@ -344,7 +363,7 @@ cp examples/rules/*.md ~/your-workspace/.claude/rules/
 ### 仕組み
 
 1. **`dispatcher.sh`** がエントリポイント。モード（`triage`, `morning`, `bridge`, `today`）を受け取り、対応するハンドラを起動
-2. **`today.sh`** が5チャンネル（メール、Slack、LINE、Messenger、カレンダー）を並列取得し、チャンネル別のプロンプトでAI分類を実行、結果をSlack DMに投稿
+2. **`today.sh`** が6チャンネル（メール、Slack、LINE、Messenger、Chatwork、カレンダー）を並列取得し、チャンネル別のプロンプトでAI分類を実行、結果をSlack DMに投稿
 3. **`morning-briefing.sh`** がカレンダー・Todo・夜間トリアージ結果・承認待ちを統合してモーニングブリーフィングを生成
 4. **`slack-bridge.sh`** がSlack DMをポーリングし、`claude -p` にルーティング。双方向のClaude ↔ Slackインターフェースを実現
 5. **`notify.sh`** がフォーマット済み通知をSlack DMに送信
@@ -363,7 +382,7 @@ cp examples/rules/*.md ~/your-workspace/.claude/rules/
 
 | ファイル | スケジュール | 内容 |
 |---------|------------|------|
-| `com.chief-of-staff.today.plist` | 毎時 | 5チャンネルトリアージ、結果をSlackに投稿 |
+| `com.chief-of-staff.today.plist` | 毎時 | 6チャンネルトリアージ、結果をSlackに投稿 |
 | `com.chief-of-staff.morning.plist` | 毎日 07:30 | カレンダー + Todoのモーニングブリーフィング |
 
 ### セットアップ（macOS）
@@ -518,6 +537,7 @@ ai-chief-of-staff/
 ├── commands/
 │   ├── mail.md                    # /mail — メールトリアージ
 │   ├── slack.md                   # /slack — Slackトリアージ
+│   ├── chatwork.md                # /chatwork — Chatworkトリアージ
 │   ├── today.md                   # /today — 朝のブリーフィング
 │   └── schedule-reply.md          # /schedule-reply — 日程調整ワークフロー
 ├── skills/
@@ -527,6 +547,7 @@ ai-chief-of-staff/
 │   └── post-send.sh               # PostToolUse送信後強制Hook
 ├── scripts/
 │   ├── calendar-suggest.js        # 空き時間検索スクリプト
+│   ├── chatwork-fetch.sh          # Chatwork APIフェッチャー（curl + jq）
 │   ├── core/
 │   │   └── msg-core.sh            # 共有Matrixメッセージングユーティリティ
 │   ├── line-sync.sh               # LINEメッセージ同期（Matrix経由）
@@ -538,7 +559,7 @@ ai-chief-of-staff/
 │   ├── messenger-send.sh          # Messenger送信（Chrome AppleScript）
 │   └── autonomous/
 │       ├── dispatcher.sh          # 全自律モードのエントリポイント
-│       ├── today.sh               # 5チャンネル統合トリアージ
+│       ├── today.sh               # 6チャンネル統合トリアージ
 │       ├── morning-briefing.sh    # モーニングブリーフィング生成
 │       ├── slack-bridge.sh        # 双方向Slack ↔ Claudeブリッジ
 │       ├── notify.sh              # Slack DM通知送信
@@ -627,9 +648,9 @@ A: はい。`/mail` と `/schedule-reply` だけ使えます。Slackコマンド
 A: はい — Claude CodeはAnthropic APIを通じてメールを処理します。センシティブなデータをClaudeに渡す場合と同様のプライバシー考慮が必要です。懸念がある場合は、セルフホストモデルでの運用を検討してください。
 
 **Q: 1日あたりのコストは？**
-A: 典型的な `/today` ブリーフィング（メール20件 + Slack + カレンダー）で約5〜10万トークン。Opus料金で約$1-2/日。Sonnetなら約$0.15-0.30/日です。
+A: 典型的な `/today` ブリーフィング（メール20件 + Slack + LINE + Messenger + Chatwork + カレンダー）で約5〜15万トークン。Opus料金で約$1-3/日。Sonnetなら約$0.15-0.50/日です。
 
-**Q: 5チャンネル全部必要ですか？**
+**Q: 6チャンネル全部必要ですか？**
 A: いいえ。メールだけ（`/mail`）から始めて、連携をセットアップしたらチャンネルを追加してください。`/today` は未設定のチャンネルを自動スキップします。
 
 ---

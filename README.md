@@ -2,11 +2,11 @@
 
 **Turn Claude Code into your personal chief of staff.**
 
-> **Before:** Every morning, 45 minutes of context-switching — scan 3 inboxes, check Slack threads, scroll LINE and Messenger, cross-reference calendar, draft replies, update your todo list. Things fall through the cracks. You forget to follow up. Calendar entries are missing meeting links.
+> **Before:** Every morning, 45 minutes of context-switching — scan 3 inboxes, check Slack threads, scroll LINE, Messenger, and Chatwork, cross-reference calendar, draft replies, update your todo list. Things fall through the cracks. You forget to follow up. Calendar entries are missing meeting links.
 >
 > **After:** You type `/today`. Five minutes later, everything is triaged, replies are drafted, calendar is updated, and nothing is forgotten — because a hook physically blocks you from moving on until it's done.
 
-I'm VP at [UPSIDER](https://corp.up-sider.com/en/) (corporate card startup, acquired by [Mizuho Financial Group](https://www.mizuhogroup.com/)). Between board meetings, investor calls, and 5+ external meetings a day across email, Slack, LINE, and Messenger — I needed a system where nothing falls through the cracks. I've been running this daily since January 2026.
+I'm VP at [UPSIDER](https://corp.up-sider.com/en/) (corporate card startup, acquired by [Mizuho Financial Group](https://www.mizuhogroup.com/)). Between board meetings, investor calls, and 5+ external meetings a day across email, Slack, LINE, Messenger, and Chatwork — I needed a system where nothing falls through the cracks. I've been running this daily since January 2026.
 
 Every morning, you type `/today` in your terminal. That's it:
 
@@ -14,13 +14,14 @@ Every morning, you type `/today` in your terminal. That's it:
 - **Slack mentions and DMs, surfaced** — unanswered threads bubble up, noise stays hidden
 - **LINE messages, triaged** — official accounts skipped, personal chats needing replies flagged with context
 - **Messenger conversations, triaged** — page notifications filtered, 1-on-1 chats needing responses surfaced
+- **Chatwork rooms, triaged** — bot noise skipped, `[To:you]` messages and unanswered DMs surfaced
 - **Today's calendar, displayed** — if a meeting link is missing, it gets auto-filled from your email. Non-routine meetings flagged for prep
 - **Stale tasks and pending responses, triaged** — pending responses over 3 days get flagged, overdue tasks surfaced. Zero undecided items
 - **Draft replies for everything that needs one** — written in your tone, with your signature, informed by your relationship history with each person
 - **Scheduling? Free slots auto-calculated** — pulled from your calendar, respecting your preferences (no mornings, travel buffers, weekdays only)
 - **After you send: calendar, todo, and notes update themselves** — enforced by a hook, so nothing falls through the cracks
 
-The concept is simple. Take five inputs — email, Slack, LINE, Messenger, calendar — and pipe them through **classify → triage → assist → execute → record**. Claude Code's `/command` system becomes the workflow engine. Hooks enforce reliability. Git persists your knowledge.
+The concept is simple. Take six inputs — email, Slack, LINE, Messenger, Chatwork, calendar — and pipe them through **classify → triage → assist → execute → record**. Claude Code's `/command` system becomes the workflow engine. Hooks enforce reliability. Git persists your knowledge.
 
 Almost no code to write — the core system is markdown prompts. Hooks and scripts are lightweight bash/JS glue. **Edit a prompt file and the behavior changes instantly.**
 
@@ -32,7 +33,7 @@ Almost no code to write — the core system is markdown prompts. Hooks and scrip
 
 ## Quick Start (5 minutes — Email + Calendar)
 
-Get email triage and calendar-aware scheduling working in 5 minutes. No Slack, LINE, Messenger, or autonomous mode needed.
+Get email triage and calendar-aware scheduling working in 5 minutes. No Slack, LINE, Messenger, Chatwork, or autonomous mode needed.
 
 ### Prerequisites
 
@@ -175,6 +176,7 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 | **Slack** | Slack MCP server | Slack MCP `conversations_add_message` | — |
 | **LINE** | Matrix bridge (mautrix-line) or custom sync script | Matrix bridge or custom send script | `private/drafts/line-replies-YYYY-MM-DD.md` |
 | **Messenger** | Chrome CDP (Playwright) | Chrome AppleScript | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
+| **Chatwork** | `chatwork-fetch.sh` (curl + jq) | Chatwork REST API (curl) | — |
 
 LINE and Messenger use a **3-layer architecture**: skill rules (classification, tone) → scripts (context collection, sending, validation) → data files (triage status, relationship notes, send logs).
 
@@ -185,7 +187,7 @@ LINE and Messenger use a **3-layer architecture**: skill rules (classification, 
 ```
 ┌─────────────────────────────────────────────────┐
 │  Commands (.claude/commands/*.md)                │
-│  /mail  /slack  /today  /schedule-reply          │
+│  /mail  /slack  /chatwork  /today  /schedule-reply│
 │  ↳ User-facing entry points (interactive)       │
 └──────────────────┬──────────────────────────────┘
                    │
@@ -239,7 +241,7 @@ LINE and Messenger use a **3-layer architecture**: skill rules (classification, 
 
 **Scripts handle deterministic logic.** Calendar availability calculation doesn't need an LLM. `calendar-suggest.js` fetches your calendar, finds free slots, respects your preferences (no mornings, travel buffers), and outputs formatted candidates. Claude Code calls this script instead of trying to reason about time math. LINE and Messenger scripts handle message syncing, context collection, and sending through a shared messaging core.
 
-**The autonomous layer runs unattended.** `scripts/autonomous/` contains scripts that run on a schedule (via launchd or cron) using `claude -p` (non-interactive mode). The dispatcher routes to specialized handlers: `today.sh` triages all 5 channels in parallel, `slack-bridge.sh` turns Slack DMs into a bidirectional Claude interface, and `notify.sh` sends results back to you via Slack.
+**The autonomous layer runs unattended.** `scripts/autonomous/` contains scripts that run on a schedule (via launchd or cron) using `claude -p` (non-interactive mode). The dispatcher routes to specialized handlers: `today.sh` triages all 6 channels in parallel, `slack-bridge.sh` turns Slack DMs into a bidirectional Claude interface, and `notify.sh` sends results back to you via Slack.
 
 **Knowledge files are your memory.** Claude Code sessions are stateless. Your relationships, preferences, and todos persist in markdown files that get version-controlled with git. Every session reads these files to maintain continuity.
 
@@ -279,6 +281,23 @@ cp scripts/messenger-*.sh ~/your-workspace/scripts/
 
 Replace `YOUR_MATRIX_USER_PARTIAL` in the scripts. See `examples/skills/messenger-skill.md` for the Chrome CDP/AppleScript workflow.
 
+### Add Chatwork
+
+Requires a Chatwork API token and `jq`.
+
+```bash
+cp commands/chatwork.md ~/.claude/commands/
+cp scripts/chatwork-fetch.sh ~/your-workspace/scripts/
+export CHATWORK_API_TOKEN="your-token-here"
+```
+
+```bash
+claude /chatwork         # Triage Chatwork messages
+claude /chatwork check   # Quick summary (last 4h)
+```
+
+> **Community-contributed.** This integration was contributed by [@jagaimo-yaro](https://github.com/jagaimo-yaro). If you encounter issues, please report them.
+
 ### Add the unified `/today` command
 
 Once you have your desired channels configured:
@@ -287,7 +306,7 @@ Once you have your desired channels configured:
 cp commands/today.md ~/.claude/commands/
 ```
 
-Replace the `YOUR_LINE_*`, `YOUR_MESSENGER_*`, and `YOUR_WORK_DOMAIN` placeholders. Unconfigured channels are automatically skipped.
+Replace the `YOUR_LINE_*`, `YOUR_MESSENGER_*`, `CHATWORK_API_TOKEN`, and `YOUR_WORK_DOMAIN` placeholders. Unconfigured channels are automatically skipped.
 
 ```bash
 claude /today         # Morning briefing — all configured channels
@@ -345,7 +364,7 @@ The `scripts/autonomous/` directory enables **unattended operation** — Claude 
 ### How it works
 
 1. **`dispatcher.sh`** is the entry point. It accepts a mode (`triage`, `morning`, `bridge`, `today`) and launches the corresponding handler
-2. **`today.sh`** fetches all 5 channels in parallel (email, Slack, LINE, Messenger, calendar), pipes each through AI classification using channel-specific prompts, and posts a summary to your Slack DM
+2. **`today.sh`** fetches all 6 channels in parallel (email, Slack, LINE, Messenger, Chatwork, calendar), pipes each through AI classification using channel-specific prompts, and posts a summary to your Slack DM
 3. **`morning-briefing.sh`** generates a morning briefing combining calendar, todos, overnight triage results, and pending approvals
 4. **`slack-bridge.sh`** polls your Slack DMs and routes messages to `claude -p`, creating a bidirectional Claude ↔ Slack interface
 5. **`notify.sh`** sends formatted notifications to your Slack DM
@@ -364,7 +383,7 @@ Example plist files are in `examples/launchd/`:
 
 | File | Schedule | What it does |
 |------|----------|--------------|
-| `com.chief-of-staff.today.plist` | Every hour | Run 5-channel triage, post summary to Slack |
+| `com.chief-of-staff.today.plist` | Every hour | Run 6-channel triage, post summary to Slack |
 | `com.chief-of-staff.morning.plist` | Daily 07:30 | Morning briefing with calendar + todos |
 
 ### Setup (macOS)
@@ -522,6 +541,7 @@ ai-chief-of-staff/
 ├── commands/
 │   ├── mail.md                    # /mail — Email triage
 │   ├── slack.md                   # /slack — Slack triage
+│   ├── chatwork.md                # /chatwork — Chatwork triage
 │   ├── today.md                   # /today — Morning briefing (all channels)
 │   └── schedule-reply.md          # /schedule-reply — Scheduling workflow
 ├── skills/
@@ -531,6 +551,7 @@ ai-chief-of-staff/
 │   └── post-send.sh               # PostToolUse hook for send enforcement
 ├── scripts/
 │   ├── calendar-suggest.js        # Free slot finder
+│   ├── chatwork-fetch.sh          # Chatwork API fetcher (curl + jq)
 │   ├── core/
 │   │   └── msg-core.sh            # Shared Matrix messaging utilities
 │   ├── line-sync.sh               # LINE message sync via Matrix
@@ -624,16 +645,16 @@ Messenger has no personal-use API. Instead of a bridge, we use Chrome CDP (Playw
 **Q: Does this work with Outlook/Exchange?**
 A: The classification logic is email-provider agnostic. You'd need to swap `gog gmail` commands with your Outlook CLI tool (e.g., `microsoft-graph-cli` or a custom script).
 
-**Q: Can I use this without Slack/LINE/Messenger?**
+**Q: Can I use this without Slack/LINE/Messenger/Chatwork?**
 A: Yes. Each channel is independent. Use just `/mail`, or `/today` with only the channels you have configured. The system gracefully handles missing channels.
 
 **Q: Is my data sent to Anthropic?**
 A: Yes — Claude Code processes your messages through the Anthropic API. The same privacy considerations as using Claude with any sensitive data apply. If this is a concern, consider running with a self-hosted model.
 
 **Q: How much does this cost per day?**
-A: A typical `/today` briefing (20 emails + Slack + LINE + Messenger + calendar) uses roughly 50-150k tokens. At Opus pricing, that's ~$1-3/day. Using Sonnet drops this to ~$0.15-0.50/day.
+A: A typical `/today` briefing (20 emails + Slack + LINE + Messenger + Chatwork + calendar) uses roughly 50-150k tokens. At Opus pricing, that's ~$1-3/day. Using Sonnet drops this to ~$0.15-0.50/day.
 
-**Q: Do I need all five channels?**
+**Q: Do I need all six channels?**
 A: No. Start with email only (`/mail`), then add channels as you set up integrations. The `/today` command automatically skips channels that aren't configured.
 
 ---
