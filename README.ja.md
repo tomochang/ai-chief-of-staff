@@ -6,6 +6,8 @@
 >
 > **After:** `/today` と打つ。5分で全チャンネルがトリアージされ、返信案ができ、カレンダーが更新され、何も漏れない — Hookが完了するまで次に進めないから。
 
+2026年1月から毎日使っています。このREADMEは実際の運用ワークフローを記述したものです。
+
 朝、ターミナルで `/today` と打つ。それだけで:
 
 - **未読メール20件を自動分類** — Bot通知やニュースレターは見せずにアーカイブ。本当に返信が必要なものだけ表示
@@ -439,7 +441,8 @@ mkdir -p ~/your-workspace/.claude/rules
 cp examples/rules/*.md ~/your-workspace/.claude/rules/
 ```
 
-### 全プレースホルダー一覧
+<details>
+<summary>全プレースホルダー一覧</summary>
 
 | プレースホルダー | 例 | 使用箇所 |
 |------------------|-----|---------|
@@ -459,6 +462,8 @@ cp examples/rules/*.md ~/your-workspace/.claude/rules/
 | `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md, msg-core.sh |
 | `YOUR_WORK_DOMAIN` | `company.com` | today.md, triage-email.md |
 | `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
+
+</details>
 
 ---
 

@@ -6,6 +6,8 @@
 >
 > **After:** You type `/today`. Five minutes later, everything is triaged, replies are drafted, calendar is updated, and nothing is forgotten — because a hook physically blocks you from moving on until it's done.
 
+I've been running this daily since January 2026. This README describes my actual production workflow.
+
 Every morning, you type `/today` in your terminal. That's it:
 
 - **20 unread emails, auto-classified** — bot notifications and newsletters get archived without you ever seeing them. Only messages that actually need your attention show up
@@ -463,7 +465,8 @@ mkdir -p ~/your-workspace/.claude/rules
 cp examples/rules/*.md ~/your-workspace/.claude/rules/
 ```
 
-### All placeholders
+<details>
+<summary>All placeholders</summary>
 
 | Placeholder | Example | Used in |
 |-------------|---------|---------|
@@ -483,6 +486,8 @@ cp examples/rules/*.md ~/your-workspace/.claude/rules/
 | `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md, msg-core.sh |
 | `YOUR_WORK_DOMAIN` | `company.com` | today.md, triage-email.md |
 | `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
+
+</details>
 
 ---
 
