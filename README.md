@@ -1,17 +1,19 @@
-# Claude Code Triage Kit
+# AI Chief of Staff
 
-**Turn Claude Code into your personal communication OS.**
+**Turn Claude Code into your personal chief of staff.**
 
 Every morning, you type `/today` in your terminal. That's it:
 
 - **20 unread emails, auto-classified** — bot notifications and newsletters get archived without you ever seeing them. Only messages that actually need your attention show up
 - **Slack mentions and DMs, surfaced** — unanswered threads bubble up, noise stays hidden
+- **LINE messages, triaged** — official accounts skipped, personal chats needing replies flagged with context
+- **Messenger conversations, triaged** — page notifications filtered, 1-on-1 chats needing responses surfaced
 - **Today's calendar, displayed** — if a meeting link is missing, it gets auto-filled from your email
 - **Draft replies for everything that needs one** — written in your tone, with your signature, informed by your relationship history with each person
 - **Scheduling? Free slots auto-calculated** — pulled from your calendar, respecting your preferences (no mornings, travel buffers, weekdays only)
 - **After you send: calendar, todo, and notes update themselves** — enforced by a hook, so nothing falls through the cracks
 
-The concept is simple. Take three inputs — email, Slack, calendar — and pipe them through **classify → assist → execute → record**. Claude Code's `/command` system becomes the workflow engine. Hooks enforce reliability. Git persists your knowledge.
+The concept is simple. Take five inputs — email, Slack, LINE, Messenger, calendar — and pipe them through **classify → assist → execute → record**. Claude Code's `/command` system becomes the workflow engine. Hooks enforce reliability. Git persists your knowledge.
 
 No code to write. No SDK. No API wrapper. **Edit a markdown file and the behavior changes instantly.**
 
@@ -39,28 +41,39 @@ Thanks for reaching out. Here are some times that
 work on my end: ...
 
 → [Send] [Edit] [Skip]
+
+## LINE — Action Required (1)
+
+### 1. Taro Tanaka
+**Last message**: Are you free this weekend?
+**Context**: Friend, last met 2/10
+
+**Draft reply**: ...
+
+→ [Send] [Edit] [Skip]
 ```
 
 ---
 
 ## How It Works
 
-This kit gives Claude Code a **4-tier triage system** for email and Slack:
+This kit gives Claude Code a **4-tier triage system** for all your communication channels — email, Slack, LINE, and Messenger:
 
 | Category | Condition | Action |
 |----------|-----------|--------|
-| **skip** | Bot notifications, noreply, auto-generated | Auto-archive (hidden from you) |
-| **info_only** | CC'd emails, receipts, internal shares | Show summary only |
+| **skip** | Bot notifications, noreply, auto-generated, official accounts | Auto-archive / ignore (hidden from you) |
+| **info_only** | CC'd emails, receipts, group chat chatter, internal shares | Show summary only |
 | **meeting_info** | Calendar invites, Zoom/Teams links, location shares | Cross-reference calendar & auto-update |
-| **action_required** | Direct recipient, contains questions, scheduling requests | Generate draft reply |
+| **action_required** | Direct messages, questions, scheduling requests | Generate draft reply |
 
 After you send a reply, a **hook-enforced checklist** ensures nothing falls through the cracks:
 
 1. Update calendar (create tentative events for proposed dates)
 2. Update your relationship notes (who you talked to, what about)
 3. Update your todo list
-4. Git commit & push (version-control your knowledge)
-5. Archive the processed email
+4. Update triage/status files (LINE/Messenger)
+5. Git commit & push (version-control your knowledge)
+6. Archive the processed email
 
 **The hook blocks completion until all steps are done.** You can't accidentally skip post-send processing.
 
@@ -77,6 +90,7 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
                    │
 ┌──────────────────▼──────────────────────────┐
 │  Skills (skills/*/SKILL.md)                  │
+│  /line  /messenger  /schedule-reply          │
 │  ↳ Reusable multi-phase workflows           │
 └──────────────────┬──────────────────────────┘
                    │
@@ -102,11 +116,24 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 
 **Commands are prompts, not code.** Each `.md` file is a structured prompt that tells Claude Code what to do step-by-step. No SDK, no API wrapper, no build system. You edit a markdown file and the behavior changes instantly.
 
-**Hooks enforce reliability.** LLMs skip steps. They forget post-processing. The `PostToolUse` hook intercepts every `gmail send` command and blocks until the checklist is done. This is the single most important piece — without it, the system works 80% of the time instead of 99%.
+**Hooks enforce reliability.** LLMs skip steps. They forget post-processing. The `PostToolUse` hook intercepts every `send` command and blocks until the checklist is done. This is the single most important piece — without it, the system works 80% of the time instead of 99%.
 
 **Scripts handle deterministic logic.** Calendar availability calculation doesn't need an LLM. `calendar-suggest.js` fetches your calendar, finds free slots, respects your preferences (no mornings, travel buffers), and outputs formatted candidates. Claude Code calls this script instead of trying to reason about time math.
 
 **Knowledge files are your memory.** Claude Code sessions are stateless. Your relationships, preferences, and todos persist in markdown files that get version-controlled with git. Every session reads these files to maintain continuity.
+
+---
+
+## Supported Channels
+
+| Channel | Fetch method | Send method | Triage file |
+|---------|-------------|-------------|-------------|
+| **Email** | `gog gmail search` (or any Gmail CLI) | `gog gmail send` | Auto-archive |
+| **Slack** | Slack MCP server | Slack MCP `conversations_add_message` | — |
+| **LINE** | Matrix bridge (mautrix-line) or custom sync script | Matrix bridge or custom send script | `private/drafts/line-replies-YYYY-MM-DD.md` |
+| **Messenger** | Matrix bridge (mautrix-meta) or browser automation | Matrix bridge or browser automation | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
+
+LINE and Messenger use a **3-layer architecture**: skill rules (classification, tone) → scripts (context collection, sending, validation) → data files (triage status, relationship notes, send logs).
 
 ---
 
@@ -118,15 +145,14 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 - A Gmail CLI tool (this kit uses [`gog`](https://github.com/pterm/gog), but any CLI that can search/send/archive Gmail works)
 - Node.js 18+ (for `calendar-suggest.js`)
 - (Optional) Slack MCP server configured in Claude Code
+- (Optional) Matrix bridge for LINE/Messenger (mautrix-line, mautrix-meta)
 
 ### 1. Copy template files
 
 ```bash
 # Commands go in your Claude Code commands directory
 cp commands/mail.md ~/.claude/commands/
-cp commands/slack.md ~/.claude/commands/
 cp commands/today.md ~/.claude/commands/
-cp commands/schedule-reply.md ~/.claude/commands/
 
 # Skills, hooks, and scripts go in your workspace
 mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts,private}
@@ -155,6 +181,12 @@ Key placeholders to replace:
 | `YOUR_WORKSPACE` | `~/workspace` | hooks, scripts |
 | `YOUR_CALENDAR_ID` | `primary` | calendar-suggest.js |
 | `YOUR_SKIP_DOMAINS` | `@company-internal.com` | mail.md |
+| `YOUR_LINE_SYNC_COMMAND` | `bash scripts/line-sync.sh` | today.md |
+| `YOUR_LINE_SEND_COMMAND` | `bash scripts/line-send.sh` | today.md |
+| `YOUR_MESSENGER_SEND_COMMAND` | `bash scripts/messenger-send.sh` | today.md |
+| `YOUR_LINE_SKIP_ACCOUNTS` | `Starbucks, Nike, ...` | today.md |
+| `YOUR_MATRIX_SERVER` | `http://localhost:8008` | today.md |
+| `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md |
 
 ### 3. Set up your knowledge files
 
@@ -218,7 +250,7 @@ Add the post-send hook to your Claude Code settings. In your project's `.claude/
 
 ### 5. Set up permissions
 
-Add pre-approved permissions for the Gmail CLI commands you'll use frequently. In `.claude/settings.local.json`:
+Add pre-approved permissions for the CLI commands you'll use frequently. In `.claude/settings.local.json`:
 
 ```json
 {
@@ -243,8 +275,7 @@ Add pre-approved permissions for the Gmail CLI commands you'll use frequently. I
 
 ```bash
 claude /mail          # Triage your email
-claude /slack         # Triage your Slack
-claude /today         # Morning briefing (email + Slack + calendar)
+claude /today         # Morning briefing (email + Slack + LINE + Messenger + calendar)
 claude /schedule-reply "Reply to John about next week's meeting"
 ```
 
@@ -281,12 +312,15 @@ Edit `SOUL.md` to match your communication style. The triage commands reference 
 - Skip formalities
 ```
 
-### Adding a new channel (e.g., Discord, Linear)
+### Adding a new channel
 
-1. Copy `commands/slack.md` as a starting template
-2. Replace the Slack MCP tool calls with your channel's integration
-3. Keep the same 4-tier classification (it works for any message source)
-4. Add a post-send hook if the channel supports sending
+The system is designed to be channel-agnostic. To add a new channel (e.g., Discord, WhatsApp, Linear):
+
+1. Copy `commands/mail.md` or the LINE/Messenger sections in `today.md` as a starting template
+2. Replace the fetch/send commands with your channel's integration (API, bridge, CLI tool)
+3. Keep the same 4-tier classification — it works for any message source
+4. Add draft-context and send scripts if applicable
+5. Add a post-send hook if the channel supports sending
 
 ### Multi-account support
 
@@ -311,12 +345,10 @@ gog gmail search "is:unread ..." --account YOUR_OTHER_EMAIL
 ## File Reference
 
 ```
-claude-code-triage/
+ai-chief-of-staff/
 ├── commands/
 │   ├── mail.md              # /mail — Email triage
-│   ├── slack.md             # /slack — Slack triage
-│   ├── today.md             # /today — Morning briefing
-│   └── schedule-reply.md    # /schedule-reply — Scheduling workflow
+│   └── today.md             # /today — Morning briefing (all channels)
 ├── skills/
 │   └── schedule-reply/
 │       └── SKILL.md         # Multi-phase scheduling skill
@@ -353,6 +385,10 @@ Your relationship notes, preferences, and todos are valuable data. Git gives you
 
 LLMs are bad at time math. "Find me 3 free 1-hour slots in the next 2 weeks, avoiding mornings" requires date arithmetic, timezone handling, and intersection calculations. `calendar-suggest.js` does this deterministically in ~100ms. The LLM's job is to format the output and compose the email — not to compute availability.
 
+### Why a Matrix bridge for LINE/Messenger?
+
+Direct APIs for LINE and Messenger require business accounts or have restrictive rate limits. A Matrix bridge (mautrix-line, mautrix-meta) provides a unified API layer that works with personal accounts. The bridge handles authentication, message syncing, and delivery — your scripts just talk to the Matrix HTTP API. Browser automation serves as a fallback when the bridge is down.
+
 ---
 
 ## FAQ
@@ -360,20 +396,23 @@ LLMs are bad at time math. "Find me 3 free 1-hour slots in the next 2 weeks, avo
 **Q: Does this work with Outlook/Exchange?**
 A: The classification logic is email-provider agnostic. You'd need to swap `gog gmail` commands with your Outlook CLI tool (e.g., `microsoft-graph-cli` or a custom script).
 
-**Q: Can I use this without Slack?**
-A: Yes. Just use `/mail` and `/schedule-reply`. The Slack commands are independent.
+**Q: Can I use this without Slack/LINE/Messenger?**
+A: Yes. Each channel is independent. Use just `/mail`, or `/today` with only the channels you have configured. The system gracefully handles missing channels.
 
-**Q: Is my email data sent to Anthropic?**
-A: Yes — Claude Code processes your emails through the Anthropic API. The same privacy considerations as using Claude with any sensitive data apply. If this is a concern, consider running with a self-hosted model.
+**Q: Is my data sent to Anthropic?**
+A: Yes — Claude Code processes your messages through the Anthropic API. The same privacy considerations as using Claude with any sensitive data apply. If this is a concern, consider running with a self-hosted model.
 
 **Q: How much does this cost per day?**
-A: A typical `/today` briefing (20 emails + Slack + calendar) uses roughly 50-100k tokens. At Opus pricing, that's ~$1-2/day. Using Sonnet drops this to ~$0.15-0.30/day.
+A: A typical `/today` briefing (20 emails + Slack + LINE + Messenger + calendar) uses roughly 50-150k tokens. At Opus pricing, that's ~$1-3/day. Using Sonnet drops this to ~$0.15-0.50/day.
+
+**Q: Do I need all five channels?**
+A: No. Start with email only (`/mail`), then add channels as you set up integrations. The `/today` command automatically skips channels that aren't configured.
 
 ---
 
 ## Credits
 
-Built by [your name] using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) by Anthropic.
+Built with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) by Anthropic.
 
 Inspired by the idea that your AI assistant should handle the *boring* parts of communication — classification, scheduling, archiving — so you can focus on the parts that actually need your brain.
 
