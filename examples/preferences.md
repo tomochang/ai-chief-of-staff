@@ -62,7 +62,7 @@ Start with the 3 things your AI asks about most:
 - **Rule**: Always check past email exchanges for tone before drafting. Match the relationship.
 
 ### Signature
-- Business emails: "Mizuno" (family name only)
+- Business emails: "YOUR_SIGNATURE" (family name only)
 - Internal: First name OK
 
 ### Response Priority

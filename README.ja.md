@@ -78,33 +78,50 @@ $ claude /today
 ## アーキテクチャ
 
 ```
-┌─────────────────────────────────────────────┐
-│  Commands (.claude/commands/*.md)            │
-│  /mail  /slack  /today  /schedule-reply      │
-│  ↳ ユーザー向けエントリポイント              │
-└──────────────────┬──────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│  Commands (.claude/commands/*.md)                │
+│  /mail  /slack  /today  /schedule-reply          │
+│  ↳ ユーザー向けエントリポイント（対話型）       │
+└──────────────────┬──────────────────────────────┘
                    │
-┌──────────────────▼──────────────────────────┐
-│  Skills (skills/*/SKILL.md)                  │
-│  ↳ 再利用可能なマルチフェーズワークフロー    │
-└──────────────────┬──────────────────────────┘
+┌──────────────────▼──────────────────────────────┐
+│  Skills (skills/*/SKILL.md)                      │
+│  /line  /messenger  /schedule-reply              │
+│  ↳ 再利用可能なマルチフェーズワークフロー       │
+└──────────────────┬──────────────────────────────┘
                    │
-┌──────────────────▼──────────────────────────┐
-│  Hooks (hooks/post-send.sh)                  │
-│  ↳ PostToolUse 強制レイヤー                  │
-│  ↳ チェックリスト完了まで処理をブロック      │
-└──────────────────┬──────────────────────────┘
+┌──────────────────▼──────────────────────────────┐
+│  Rules (.claude/rules/*.md)                      │
+│  ↳ 信頼性のための行動制約                       │
+│  ↳ 送信前/後チェックリスト、セッション起動      │
+└──────────────────┬──────────────────────────────┘
                    │
-┌──────────────────▼──────────────────────────┐
-│  Scripts (scripts/calendar-suggest.js)       │
-│  ↳ 決定的ロジック（LLM不要）                 │
-└──────────────────┬──────────────────────────┘
+┌──────────────────▼──────────────────────────────┐
+│  Hooks (hooks/post-send.sh)                      │
+│  ↳ PostToolUse 強制レイヤー                     │
+│  ↳ チェックリスト完了まで処理をブロック         │
+└──────────────────┬──────────────────────────────┘
                    │
-┌──────────────────▼──────────────────────────┐
-│  Knowledge Files (private/)                  │
-│  ↳ relationships.md, todo.md, preferences.md│
-│  ↳ Gitでバージョン管理された永続メモリ       │
-└─────────────────────────────────────────────┘
+┌──────────────────▼──────────────────────────────┐
+│  Scripts (scripts/)                              │
+│  calendar-suggest.js, line-*.sh, messenger-*.sh  │
+│  core/msg-core.sh（共有メッセージングユーティリティ）│
+│  ↳ 決定的ロジック（LLM不要）                    │
+└──────────────────┬──────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────┐
+│  Autonomous Layer (scripts/autonomous/)           │
+│  dispatcher.sh → today.sh, morning-briefing.sh   │
+│  slack-bridge.sh, notify.sh                      │
+│  ↳ launchd/cronでスケジュール実行 — 無人動作    │
+│  ↳ claude -p（非対話モード）で動作              │
+└──────────────────┬──────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────┐
+│  Knowledge Files (private/)                      │
+│  ↳ relationships.md, todo.md, preferences.md    │
+│  ↳ Gitでバージョン管理された永続メモリ          │
+└─────────────────────────────────────────────────┘
 ```
 
 ### なぜこの設計か？
@@ -113,9 +130,125 @@ $ claude /today
 
 **Hookが信頼性を保証する。** LLMはステップを飛ばします。後処理を忘れます。`PostToolUse` Hookは `gmail send` コマンドを検知し、チェックリストが完了するまでブロックします。これがシステム全体で最も重要なパーツです — これがなければ、成功率は99%ではなく80%になります。
 
-**Scriptが決定的ロジックを担当。** カレンダーの空き時間計算にLLMは不要です。`calendar-suggest.js` がカレンダーを取得し、空きスロットを見つけ、好み（午前NG、移動バッファ等）を反映し、フォーマット済みの候補を出力します。LLMの仕事は出力を整形してメールを書くことであり、時間計算ではありません。
+**Ruleがllmの振る舞いを制約する。** `.claude/rules/` のルールは毎セッション自動で読み込まれます。送信前チェックリスト、送信後の強制処理、セッション起動シーケンスなどを強制します。プロンプトの指示と違い、ルールはシステムが注入するため — LLMがスキップすることはできません。
+
+**Scriptが決定的ロジックを担当。** カレンダーの空き時間計算にLLMは不要です。`calendar-suggest.js` がカレンダーを取得し、空きスロットを見つけ、好み（午前NG、移動バッファ等）を反映し、フォーマット済みの候補を出力します。LINE・Messengerスクリプトは共有メッセージングコアを通じてメッセージの同期・コンテキスト収集・送信を処理します。
+
+**自律レイヤーが無人で動作する。** `scripts/autonomous/` には、launchd/cronでスケジュール実行されるスクリプトがあります。`claude -p`（非対話モード）を使用。dispatcherが各ハンドラに振り分けます: `today.sh` は5チャンネルを並列トリアージ、`slack-bridge.sh` はSlack DMを双方向Claudeインターフェースに変換、`notify.sh` は結果をSlack DMで通知します。
 
 **Knowledge Filesがあなたの記憶。** Claude Codeのセッションはステートレスです。関係性、好み、Todoはマークダウンファイルに永続化され、Gitでバージョン管理されます。毎セッション開始時にこれらを読み込むことで、継続性が保たれます。
+
+---
+
+## 自律実行
+
+`scripts/autonomous/` ディレクトリで**無人動作**を実現 — ターミナルを開かなくてもClaudeがスケジュールで動きます。
+
+### 仕組み
+
+1. **`dispatcher.sh`** がエントリポイント。モード（`triage`, `morning`, `bridge`, `today`）を受け取り、対応するハンドラを起動
+2. **`today.sh`** が5チャンネル（メール、Slack、LINE、Messenger、カレンダー）を並列取得し、チャンネル別のプロンプトでAI分類を実行、結果をSlack DMに投稿
+3. **`morning-briefing.sh`** がカレンダー・Todo・夜間トリアージ結果・承認待ちを統合してモーニングブリーフィングを生成
+4. **`slack-bridge.sh`** がSlack DMをポーリングし、`claude -p` にルーティング。双方向のClaude ↔ Slackインターフェースを実現
+5. **`notify.sh`** がフォーマット済み通知をSlack DMに送信
+
+すべての自律スクリプトは `claude -p`（パイプ/非対話モード）を使用し、`--append-system-prompt` でコンテキストを注入。結果はSlack Web APIで通知されます。
+
+### HITL（Human-in-the-Loop）承認フロー
+
+`lib/approval.sh` がSlackベースの承認フローを実装。自律エージェントがメッセージ送信やカレンダー更新を行う前に、Slackにプレビューを投稿し、あなたのリアクション（チェックマークで承認、Xで拒否）を待ちます。
+
+---
+
+## スケジューリング（launchd / cron）
+
+`examples/launchd/` にplistテンプレートがあります:
+
+| ファイル | スケジュール | 内容 |
+|---------|------------|------|
+| `com.chief-of-staff.today.plist` | 毎時 | 5チャンネルトリアージ、結果をSlackに投稿 |
+| `com.chief-of-staff.morning.plist` | 毎日 07:30 | カレンダー + Todoのモーニングブリーフィング |
+
+### セットアップ（macOS）
+
+```bash
+# 1. plistをコピーして編集（YOUR_HOME, YOUR_WORKSPACEを置換）
+cp examples/launchd/com.chief-of-staff.today.plist ~/Library/LaunchAgents/
+
+# 2. パスを編集 — launchdは$HOMEや~を展開しません
+vim ~/Library/LaunchAgents/com.chief-of-staff.today.plist
+
+# 3. ロード
+launchctl load ~/Library/LaunchAgents/com.chief-of-staff.today.plist
+
+# 4. ステータス確認
+launchctl list | grep chief-of-staff
+```
+
+### セットアップ（Linux / cron）
+
+```bash
+# crontabに追加
+crontab -e
+
+# 毎時
+0 * * * * /path/to/scripts/autonomous/dispatcher.sh today >> /tmp/chief-of-staff.log 2>&1
+
+# 毎日07:30
+30 7 * * * /path/to/scripts/autonomous/dispatcher.sh morning >> /tmp/chief-of-staff.log 2>&1
+```
+
+---
+
+## ルールシステム
+
+`.claude/rules/` のルールは、Claude Codeが毎セッション自動で読み込む行動制約です。プロンプトの指示と違い、ルールは**システムが注入**するため — LLMが無視することはできません。
+
+`examples/rules/` にサンプルルールがあります:
+
+| ルール | 目的 |
+|--------|------|
+| `pre-send-checklist.md` | 送信前にCC宛先を確認 |
+| `post-send-checklist.md` | 送信後にカレンダー/Todo/関係性の更新を強制 |
+| `session-start.md` | セッション開始時にナレッジファイルを読み込み |
+| `calendar-update.md` | カレンダー変更前にエビデンス（メール/Slack）の確認を要求 |
+| `self-awareness.md` | LLM自己修正パターン（反ハルシネーション、反スキップ） |
+| `parallel-execution.md` | 独立タスクの並列実行 |
+| `trigger-workflows.md` | キーワードからワークフローへのマッピング |
+
+使い方: 必要なルールを `.claude/rules/` にコピーするだけです。
+
+---
+
+## LINE・Messengerスクリプト
+
+共有コア（`scripts/core/msg-core.sh`）上に構築されたLINE・Messengerメッセージングスクリプト。
+
+### 前提条件
+
+- [Matrix](https://matrix.org/) ホームサーバー（例: Synapse）
+- LINEブリッジ: [mautrix-line](https://github.com/mautrix/line)
+- Messengerブリッジ: [mautrix-meta](https://github.com/mautrix/meta)
+- 環境変数: `MATRIX_SERVER`, `MATRIX_ADMIN_TOKEN`
+
+### スクリプト一覧
+
+| スクリプト | 目的 |
+|-----------|------|
+| `core/msg-core.sh` | 共有Matrix API関数（ルーム一覧、メッセージ取得、送信） |
+| `line-sync.sh` | Matrixブリッジ経由のLINEメッセージ同期 |
+| `line-draft.sh` | LINE返信ドラフトのコンテキスト収集 |
+| `line-review.sh` | ドラフト検証（絵文字、トーン、長さ） |
+| `line-send.sh` | LINEメッセージ送信 + 配信確認 |
+| `line-rooms.sh` | VPS Matrixブリッジ経由のルーム検索 |
+| `messenger-draft.sh` | Messenger返信ドラフトのコンテキスト収集 |
+| `messenger-send.sh` | Messengerメッセージ送信（Matrix + Chromeフォールバック） |
+
+### スキル
+
+LINE・Messengerのスキル例が `examples/skills/` にあります:
+- `line-skill.md` — フェーズ、ルール、トラブルシューティングを含む完全なLINEワークフロー
+- `messenger-skill.md` — Chrome CDP/AppleScriptフォールバックを含む完全なMessengerワークフロー
 
 ---
 
@@ -127,6 +260,7 @@ $ claude /today
 - Gmail CLIツール（本キットは [`gog`](https://github.com/pterm/gog) を使用。Gmail検索・送信・アーカイブができるCLIなら何でも可）
 - Node.js 18+（`calendar-suggest.js` 用）
 - （オプション）Claude CodeにSlack MCPサーバーを設定済み
+- （オプション）Slack Bot Token（`chat:write`, `channels:history`, `im:history` スコープ） — 自律モード用
 
 ### 1. テンプレートファイルをコピー
 
@@ -138,11 +272,23 @@ cp commands/today.md ~/.claude/commands/
 cp commands/schedule-reply.md ~/.claude/commands/
 
 # Skills、Hooks、Scriptsはワークスペースへ
-mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts,private}
+mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts/core,scripts/autonomous,private}
 cp skills/schedule-reply/SKILL.md ~/your-workspace/skills/schedule-reply/
 cp hooks/post-send.sh ~/your-workspace/hooks/
 cp scripts/calendar-suggest.js ~/your-workspace/scripts/
 cp examples/SOUL.md ~/your-workspace/
+
+# （オプション）LINE/Messengerスクリプト
+cp scripts/core/msg-core.sh ~/your-workspace/scripts/core/
+cp scripts/line-*.sh ~/your-workspace/scripts/
+cp scripts/messenger-*.sh ~/your-workspace/scripts/
+
+# （オプション）自律実行スクリプト
+cp -r scripts/autonomous/ ~/your-workspace/scripts/autonomous/
+
+# （オプション）ルール
+mkdir -p ~/your-workspace/.claude/rules
+cp examples/rules/*.md ~/your-workspace/.claude/rules/
 ```
 
 ### 2. 自分の情報を設定
@@ -164,7 +310,13 @@ grep -r "YOUR_" commands/ skills/ hooks/ scripts/
 | `YOUR_WORKSPACE` | `~/workspace` | hooks, scripts |
 | `YOUR_CALENDAR_ID` | `primary` | calendar-suggest.js |
 | `YOUR_SKIP_DOMAINS` | `@company-internal.com` | mail.md |
-| `YOUR_WORK_DOMAIN` | `company.com` | today.md |
+| `YOUR_SLACK_USER_ID` | `U1234567890` | config.json, slack-api.sh, slack-bridge.sh |
+| `YOUR_SLACK_BOT_TOKEN` | `xoxb-...` | .env |
+| `YOUR_SLACK_MENTIONS` | `@alice, @Alice` | triage-slack.md |
+| `YOUR_MATRIX_USER_PARTIAL` | `ualice` | msg-core.sh, line-sync.sh |
+| `YOUR_VPS_HOST` | `root@your-server.com` | line-rooms.sh |
+| `YOUR_WORK_DOMAIN` | `company.com` | today.md, triage-email.md |
+| `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
 | `YOUR_TASK_LIST_COMMAND` | `gog tasks list` | today.md（オプション） |
 
 ### 3. ナレッジファイルを初期化
@@ -320,23 +472,63 @@ gog gmail search "is:unread ..." --account YOUR_OTHER_EMAIL
 ## ファイル構成
 
 ```
-claude-code-triage/
+ai-chief-of-staff/
 ├── commands/
-│   ├── mail.md              # /mail — メールトリアージ
-│   ├── slack.md             # /slack — Slackトリアージ
-│   ├── today.md             # /today — 朝のブリーフィング
-│   └── schedule-reply.md    # /schedule-reply — 日程調整ワークフロー
+│   ├── mail.md                    # /mail — メールトリアージ
+│   ├── slack.md                   # /slack — Slackトリアージ
+│   ├── today.md                   # /today — 朝のブリーフィング
+│   └── schedule-reply.md          # /schedule-reply — 日程調整ワークフロー
 ├── skills/
 │   └── schedule-reply/
-│       └── SKILL.md         # マルチフェーズ日程調整スキル
+│       └── SKILL.md               # マルチフェーズ日程調整スキル
 ├── hooks/
-│   └── post-send.sh         # PostToolUse送信後強制Hook
+│   └── post-send.sh               # PostToolUse送信後強制Hook
 ├── scripts/
-│   └── calendar-suggest.js  # 空き時間検索スクリプト
+│   ├── calendar-suggest.js        # 空き時間検索スクリプト
+│   ├── core/
+│   │   └── msg-core.sh            # 共有Matrixメッセージングユーティリティ
+│   ├── line-sync.sh               # LINEメッセージ同期（Matrix経由）
+│   ├── line-draft.sh              # LINEドラフトコンテキスト収集
+│   ├── line-review.sh             # LINEドラフト検証
+│   ├── line-send.sh               # LINE送信 + 配信確認
+│   ├── line-rooms.sh              # LINEルーム検索
+│   ├── messenger-draft.sh         # Messengerドラフトコンテキスト
+│   ├── messenger-send.sh          # Messenger送信（Matrix + Chrome）
+│   └── autonomous/
+│       ├── dispatcher.sh          # 全自律モードのエントリポイント
+│       ├── today.sh               # 5チャンネル統合トリアージ
+│       ├── morning-briefing.sh    # モーニングブリーフィング生成
+│       ├── slack-bridge.sh        # 双方向Slack ↔ Claudeブリッジ
+│       ├── notify.sh              # Slack DM通知送信
+│       ├── config.json            # 自律モード設定
+│       ├── lib/
+│       │   ├── common.sh          # 共有ユーティリティ（ログ、ロック）
+│       │   ├── slack-api.sh       # Slack Web APIラッパー
+│       │   └── approval.sh        # HITL承認フロー（Slackリアクション）
+│       └── prompts/
+│           ├── triage-email.md    # メール分類プロンプト
+│           ├── triage-slack.md    # Slack分類プロンプト
+│           ├── triage-line.md     # LINE分類プロンプト
+│           ├── triage-messenger.md # Messenger分類プロンプト
+│           └── today-briefing.md  # ブリーフィング生成プロンプト
 ├── examples/
-│   └── SOUL.md              # ペルソナ設定テンプレート
-└── README.md                # 英語版
-└── README.ja.md             # このファイル
+│   ├── SOUL.md                    # ペルソナ設定テンプレート
+│   ├── rules/
+│   │   ├── pre-send-checklist.md  # 送信前チェックリスト
+│   │   ├── post-send-checklist.md # 送信後強制処理
+│   │   ├── session-start.md       # セッション起動シーケンス
+│   │   ├── calendar-update.md     # エビデンスベースのカレンダー更新
+│   │   ├── self-awareness.md      # LLM自己修正パターン
+│   │   ├── parallel-execution.md  # 並列タスク実行
+│   │   └── trigger-workflows.md   # キーワード → ワークフロー
+│   ├── skills/
+│   │   ├── line-skill.md          # LINEメッセージングスキル
+│   │   └── messenger-skill.md     # Messengerメッセージングスキル
+│   └── launchd/
+│       ├── com.chief-of-staff.today.plist    # 毎時トリアージ
+│       └── com.chief-of-staff.morning.plist  # 毎朝ブリーフィング
+├── README.md                      # 英語版
+└── README.ja.md                   # このファイル
 ```
 
 ---
@@ -362,6 +554,14 @@ LLM駆動ワークフローの最大の失敗モードは**ステップの忘却
 ### なぜカレンダーロジックを別スクリプトに分離するのか？
 
 LLMは時間計算が苦手です。「今後2週間で、午前を避けて、1時間の空きスロットを3つ見つけて」には日付算術、タイムゾーン処理、交差計算が必要です。`calendar-suggest.js` はこれを決定的に100msで処理します。LLMの仕事は出力をフォーマットしてメールを書くことであり、空き時間を計算することではありません。
+
+### なぜプロンプト指示ではなくルールなのか？
+
+プロンプトの指示は忘れられます。システムプロンプトに「送信後は必ずカレンダーを更新すること」と書いても、Claudeは20%の確率でスキップします。`.claude/rules/` のルールはシステムが毎セッション注入するため — LLMが無視を選択することはできません。Hook（ツールレベルでの強制）と合わせて、二重の信頼性レイヤーを実現します。
+
+### なぜ自律レイヤーが必要なのか？
+
+対話モードではターミナルを開いてコマンドを入力する必要があります。自律レイヤー（`scripts/autonomous/`）はlaunchd/cronでスケジュール実行され、`claude -p`（非対話モード）を使用。デスクを離れていてもトリアージが実行されます。結果はSlackに投稿され、HITL承認フローであなたのコントロールを維持します。
 
 ---
 

@@ -1,0 +1,53 @@
+<!--
+  Daily morning briefing dispatcher (07:30)
+
+  Setup:
+    1. Copy this file to ~/Library/LaunchAgents/
+    2. Replace ALL occurrences of YOUR_HOME with your actual home path (e.g., /Users/yourname)
+    3. Replace ALL occurrences of YOUR_WORKSPACE with your workspace path (e.g., /Users/yourname/workspace)
+    4. Load: launchctl load ~/Library/LaunchAgents/com.chief-of-staff.morning.plist
+    5. Unload: launchctl unload ~/Library/LaunchAgents/com.chief-of-staff.morning.plist
+    6. Check status: launchctl list | grep chief-of-staff
+
+  Note: launchd does NOT expand $HOME or ~ in plist values. You must use absolute paths.
+-->
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.chief-of-staff.morning</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>YOUR_WORKSPACE/scripts/autonomous/dispatcher.sh</string>
+        <string>morning</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>YOUR_WORKSPACE</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/chief-of-staff-morning.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/chief-of-staff-morning.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+        <key>HOME</key>
+        <string>YOUR_HOME</string>
+    </dict>
+</dict>
+</plist>

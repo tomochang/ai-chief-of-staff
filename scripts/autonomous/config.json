@@ -1,0 +1,73 @@
+{
+  "triage": {
+    "interval_minutes": 30,
+    "email": {
+      "max_results": 20,
+      "search_query": "is:unread -category:promotions -category:social",
+      "auto_archive_skip": true
+    },
+    "slack": {
+      "lookback_hours": 4,
+      "mention_count": 20,
+      "dm_lookback_hours": 4
+    },
+    "claude": {
+      "max_turns": 10,
+      "allowed_tools": "Bash(gog *),Read"
+    }
+  },
+  "today": {
+    "interval_minutes": 60,
+    "email": {
+      "max_results": 20,
+      "search_query": "is:unread -category:promotions -category:social",
+      "auto_archive_skip": true
+    },
+    "slack": {
+      "lookback_hours": 4,
+      "mention_count": 20,
+      "dm_lookback_hours": 4
+    },
+    "line": {
+      "enabled": true,
+      "sync_hours": 4
+    },
+    "messenger": {
+      "enabled": true,
+      "check_hours": 4
+    },
+    "calendar": {
+      "enabled": true
+    },
+    "claude": {
+      "max_turns": 15,
+      "allowed_tools": "Bash(gog *),Read",
+      "briefing_max_turns": 5
+    }
+  },
+  "heal": {
+    "max_retries": 3,
+    "claude": {
+      "max_turns": 15,
+      "allowed_tools": "Read,Bash(npm test *),Bash(npx tsc *),Edit,Write,Grep,Glob"
+    }
+  },
+  "quality": {
+    "claude": {
+      "max_turns": 3,
+      "min_diff_lines": 5
+    }
+  },
+  "notify": {
+    "channel": "self",
+    "slack_user_id": "YOUR_SLACK_USER_ID"
+  },
+  "max_budget_usd": "0.50",
+  "hitl": {
+    "low_risk_auto": true,
+    "medium_risk_notify": true,
+    "high_risk_approval": true,
+    "approval_timeout_hours": 4,
+    "reminder_timeout_hours": 8
+  }
+}

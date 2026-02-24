@@ -89,34 +89,50 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│  Commands (.claude/commands/*.md)            │
-│  /mail  /slack  /today  /schedule-reply      │
-│  ↳ User-facing entry points                 │
-└──────────────────┬──────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│  Commands (.claude/commands/*.md)                │
+│  /mail  /slack  /today  /schedule-reply          │
+│  ↳ User-facing entry points (interactive)       │
+└──────────────────┬──────────────────────────────┘
                    │
-┌──────────────────▼──────────────────────────┐
-│  Skills (skills/*/SKILL.md)                  │
-│  /line  /messenger  /schedule-reply          │
-│  ↳ Reusable multi-phase workflows           │
-└──────────────────┬──────────────────────────┘
+┌──────────────────▼──────────────────────────────┐
+│  Skills (skills/*/SKILL.md)                      │
+│  /line  /messenger  /schedule-reply              │
+│  ↳ Reusable multi-phase workflows               │
+└──────────────────┬──────────────────────────────┘
                    │
-┌──────────────────▼──────────────────────────┐
-│  Hooks (hooks/post-send.sh)                  │
-│  ↳ PostToolUse enforcement layer            │
-│  ↳ Blocks completion until checklist done   │
-└──────────────────┬──────────────────────────┘
+┌──────────────────▼──────────────────────────────┐
+│  Rules (.claude/rules/*.md)                      │
+│  ↳ Behavioral constraints for reliability       │
+│  ↳ Pre/post-send checklists, session boot       │
+└──────────────────┬──────────────────────────────┘
                    │
-┌──────────────────▼──────────────────────────┐
-│  Scripts (scripts/calendar-suggest.js)       │
-│  ↳ Deterministic logic (no LLM needed)      │
-└──────────────────┬──────────────────────────┘
+┌──────────────────▼──────────────────────────────┐
+│  Hooks (hooks/post-send.sh)                      │
+│  ↳ PostToolUse enforcement layer                │
+│  ↳ Blocks completion until checklist done       │
+└──────────────────┬──────────────────────────────┘
                    │
-┌──────────────────▼──────────────────────────┐
-│  Knowledge Files (private/)                  │
-│  ↳ relationships.md, todo.md, preferences.md│
-│  ↳ Git-versioned persistent memory          │
-└─────────────────────────────────────────────┘
+┌──────────────────▼──────────────────────────────┐
+│  Scripts (scripts/)                              │
+│  calendar-suggest.js, line-*.sh, messenger-*.sh  │
+│  core/msg-core.sh (shared messaging utilities)   │
+│  ↳ Deterministic logic (no LLM needed)          │
+└──────────────────┬──────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────┐
+│  Autonomous Layer (scripts/autonomous/)           │
+│  dispatcher.sh → today.sh, morning-briefing.sh   │
+│  slack-bridge.sh, notify.sh                      │
+│  ↳ Scheduled via launchd/cron — runs unattended │
+│  ↳ Uses claude -p (non-interactive mode)        │
+└──────────────────┬──────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────┐
+│  Knowledge Files (private/)                      │
+│  ↳ relationships.md, todo.md, preferences.md    │
+│  ↳ Git-versioned persistent memory              │
+└─────────────────────────────────────────────────┘
 ```
 
 ### Why this design?
@@ -125,7 +141,11 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 
 **Hooks enforce reliability.** LLMs skip steps. They forget post-processing. The `PostToolUse` hook intercepts every `send` command and blocks until the checklist is done. This is the single most important piece — without it, the system works 80% of the time instead of 99%.
 
-**Scripts handle deterministic logic.** Calendar availability calculation doesn't need an LLM. `calendar-suggest.js` fetches your calendar, finds free slots, respects your preferences (no mornings, travel buffers), and outputs formatted candidates. Claude Code calls this script instead of trying to reason about time math.
+**Rules constrain LLM behavior.** Rules in `.claude/rules/` fire automatically on every session. They enforce checklists (pre-send verification, post-send follow-through), session startup sequences, and behavioral patterns. Unlike prompt instructions that get forgotten, rules are injected by the system — the LLM cannot skip them.
+
+**Scripts handle deterministic logic.** Calendar availability calculation doesn't need an LLM. `calendar-suggest.js` fetches your calendar, finds free slots, respects your preferences (no mornings, travel buffers), and outputs formatted candidates. Claude Code calls this script instead of trying to reason about time math. LINE and Messenger scripts handle message syncing, context collection, and sending through a shared messaging core.
+
+**The autonomous layer runs unattended.** `scripts/autonomous/` contains scripts that run on a schedule (via launchd or cron) using `claude -p` (non-interactive mode). The dispatcher routes to specialized handlers: `today.sh` triages all 5 channels in parallel, `slack-bridge.sh` turns Slack DMs into a bidirectional Claude interface, and `notify.sh` sends results back to you via Slack.
 
 **Knowledge files are your memory.** Claude Code sessions are stateless. Your relationships, preferences, and todos persist in markdown files that get version-controlled with git. Every session reads these files to maintain continuity.
 
@@ -144,6 +164,118 @@ LINE and Messenger use a **3-layer architecture**: skill rules (classification, 
 
 ---
 
+## Autonomous Execution
+
+The `scripts/autonomous/` directory enables **unattended operation** — Claude runs on a schedule without you opening a terminal.
+
+### How it works
+
+1. **`dispatcher.sh`** is the entry point. It accepts a mode (`triage`, `morning`, `bridge`, `today`) and launches the corresponding handler
+2. **`today.sh`** fetches all 5 channels in parallel (email, Slack, LINE, Messenger, calendar), pipes each through AI classification using channel-specific prompts, and posts a summary to your Slack DM
+3. **`morning-briefing.sh`** generates a morning briefing combining calendar, todos, overnight triage results, and pending approvals
+4. **`slack-bridge.sh`** polls your Slack DMs and routes messages to `claude -p`, creating a bidirectional Claude ↔ Slack interface
+5. **`notify.sh`** sends formatted notifications to your Slack DM
+
+All autonomous scripts use `claude -p` (pipe/non-interactive mode) with `--append-system-prompt` to inject context. Results are posted to Slack via the Web API.
+
+### HITL (Human-in-the-Loop) Approval
+
+The `lib/approval.sh` module implements a Slack-based approval flow. When the autonomous agent wants to send a message or update your calendar, it posts a preview to Slack and waits for your reaction (checkmark to approve, X to reject). This prevents the agent from acting without your consent.
+
+---
+
+## Scheduling (launchd / cron)
+
+Example plist files are in `examples/launchd/`:
+
+| File | Schedule | What it does |
+|------|----------|--------------|
+| `com.chief-of-staff.today.plist` | Every hour | Run 5-channel triage, post summary to Slack |
+| `com.chief-of-staff.morning.plist` | Daily 07:30 | Morning briefing with calendar + todos |
+
+### Setup (macOS)
+
+```bash
+# 1. Copy and edit the plist (replace YOUR_HOME, YOUR_WORKSPACE)
+cp examples/launchd/com.chief-of-staff.today.plist ~/Library/LaunchAgents/
+
+# 2. Edit paths — launchd does NOT expand $HOME or ~
+vim ~/Library/LaunchAgents/com.chief-of-staff.today.plist
+
+# 3. Load
+launchctl load ~/Library/LaunchAgents/com.chief-of-staff.today.plist
+
+# 4. Check status
+launchctl list | grep chief-of-staff
+```
+
+### Setup (Linux / cron)
+
+```bash
+# Add to crontab
+crontab -e
+
+# Every hour
+0 * * * * /path/to/scripts/autonomous/dispatcher.sh today >> /tmp/chief-of-staff.log 2>&1
+
+# Daily at 07:30
+30 7 * * * /path/to/scripts/autonomous/dispatcher.sh morning >> /tmp/chief-of-staff.log 2>&1
+```
+
+---
+
+## Rules System
+
+Rules in `.claude/rules/` are behavioral constraints that Claude Code loads automatically on every session. Unlike prompt instructions, rules are **system-injected** — the LLM cannot choose to skip them.
+
+Example rules are in `examples/rules/`:
+
+| Rule | Purpose |
+|------|---------|
+| `pre-send-checklist.md` | Verify CC recipients before sending |
+| `post-send-checklist.md` | Enforce calendar/todo/relationships updates after sending |
+| `session-start.md` | Load knowledge files at session start |
+| `calendar-update.md` | Require evidence (email/Slack) before modifying calendar |
+| `self-awareness.md` | LLM self-correction patterns (anti-hallucination, anti-skip) |
+| `parallel-execution.md` | Run independent tasks concurrently |
+| `trigger-workflows.md` | Map keywords to workflow handlers |
+
+To use: copy desired rules to your workspace's `.claude/rules/` directory.
+
+---
+
+## LINE & Messenger Scripts
+
+Scripts for LINE and Messenger messaging, built on a shared core (`scripts/core/msg-core.sh`).
+
+### Prerequisites
+
+- A [Matrix](https://matrix.org/) homeserver (e.g., Synapse)
+- [mautrix-line](https://github.com/mautrix/line) bridge for LINE
+- [mautrix-meta](https://github.com/mautrix/meta) bridge for Messenger
+- Environment variables: `MATRIX_SERVER`, `MATRIX_ADMIN_TOKEN`
+
+### Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `core/msg-core.sh` | Shared Matrix API functions (room listing, message fetching, sending) |
+| `line-sync.sh` | Sync LINE messages via Matrix bridge |
+| `line-draft.sh` | Collect context for LINE reply drafts |
+| `line-review.sh` | Validate drafts (emoji, tone, length) |
+| `line-send.sh` | Send LINE message + verify delivery |
+| `line-rooms.sh` | Search LINE rooms via VPS Matrix bridge |
+| `messenger-draft.sh` | Collect context for Messenger reply drafts |
+| `messenger-send.sh` | Send Messenger message (Matrix + Chrome fallback) |
+
+### Skills
+
+Example skills for LINE and Messenger are in `examples/skills/`:
+- `line-skill.md` — Full LINE workflow with phases, rules, and troubleshooting
+- `messenger-skill.md` — Full Messenger workflow with Chrome CDP/AppleScript fallback
+
+---
+
 ## Quick Start
 
 ### Prerequisites
@@ -152,6 +284,7 @@ LINE and Messenger use a **3-layer architecture**: skill rules (classification, 
 - A Gmail CLI tool (this kit uses [`gog`](https://github.com/pterm/gog), but any CLI that can search/send/archive Gmail works)
 - Node.js 18+ (for `calendar-suggest.js`)
 - (Optional) Slack MCP server configured in Claude Code
+- (Optional) Slack Bot Token with `chat:write`, `channels:history`, `im:history` scopes — for autonomous mode
 - (Optional) Matrix bridge for LINE/Messenger (mautrix-line, mautrix-meta)
 
 ### 1. Copy template files
@@ -162,11 +295,23 @@ cp commands/mail.md ~/.claude/commands/
 cp commands/today.md ~/.claude/commands/
 
 # Skills, hooks, and scripts go in your workspace
-mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts,private}
+mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts/core,scripts/autonomous,private}
 cp skills/schedule-reply/SKILL.md ~/your-workspace/skills/schedule-reply/
 cp hooks/post-send.sh ~/your-workspace/hooks/
 cp scripts/calendar-suggest.js ~/your-workspace/scripts/
 cp examples/SOUL.md ~/your-workspace/
+
+# (Optional) LINE/Messenger scripts
+cp scripts/core/msg-core.sh ~/your-workspace/scripts/core/
+cp scripts/line-*.sh ~/your-workspace/scripts/
+cp scripts/messenger-*.sh ~/your-workspace/scripts/
+
+# (Optional) Autonomous scripts
+cp -r scripts/autonomous/ ~/your-workspace/scripts/autonomous/
+
+# (Optional) Rules
+mkdir -p ~/your-workspace/.claude/rules
+cp examples/rules/*.md ~/your-workspace/.claude/rules/
 ```
 
 ### 2. Configure your identity
@@ -188,13 +333,19 @@ Key placeholders to replace:
 | `YOUR_WORKSPACE` | `~/workspace` | hooks, scripts |
 | `YOUR_CALENDAR_ID` | `primary` | calendar-suggest.js |
 | `YOUR_SKIP_DOMAINS` | `@company-internal.com` | mail.md |
+| `YOUR_SLACK_USER_ID` | `U1234567890` | config.json, slack-api.sh, slack-bridge.sh |
+| `YOUR_SLACK_BOT_TOKEN` | `xoxb-...` | .env |
+| `YOUR_SLACK_MENTIONS` | `@alice, @Alice` | triage-slack.md |
+| `YOUR_MATRIX_USER_PARTIAL` | `ualice` | msg-core.sh, line-sync.sh |
+| `YOUR_VPS_HOST` | `root@your-server.com` | line-rooms.sh |
 | `YOUR_LINE_SYNC_COMMAND` | `bash scripts/line-sync.sh` | today.md |
 | `YOUR_LINE_SEND_COMMAND` | `bash scripts/line-send.sh` | today.md |
 | `YOUR_MESSENGER_SEND_COMMAND` | `bash scripts/messenger-send.sh` | today.md |
 | `YOUR_LINE_SKIP_ACCOUNTS` | `Starbucks, Nike, ...` | today.md |
-| `YOUR_MATRIX_SERVER` | `http://localhost:8008` | today.md |
-| `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md |
-| `YOUR_WORK_DOMAIN` | `company.com` | today.md |
+| `YOUR_MATRIX_SERVER` | `http://localhost:8008` | today.md, msg-core.sh |
+| `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md, msg-core.sh |
+| `YOUR_WORK_DOMAIN` | `company.com` | today.md, triage-email.md |
+| `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
 | `YOUR_TASK_LIST_COMMAND` | `gog tasks list` | today.md (optional) |
 
 ### 3. Set up your knowledge files
@@ -356,18 +507,61 @@ gog gmail search "is:unread ..." --account YOUR_OTHER_EMAIL
 ```
 ai-chief-of-staff/
 ├── commands/
-│   ├── mail.md              # /mail — Email triage
-│   └── today.md             # /today — Morning briefing (all channels)
+│   ├── mail.md                    # /mail — Email triage
+│   ├── slack.md                   # /slack — Slack triage
+│   ├── today.md                   # /today — Morning briefing (all channels)
+│   └── schedule-reply.md          # /schedule-reply — Scheduling workflow
 ├── skills/
 │   └── schedule-reply/
-│       └── SKILL.md         # Multi-phase scheduling skill
+│       └── SKILL.md               # Multi-phase scheduling skill
 ├── hooks/
-│   └── post-send.sh         # PostToolUse hook for send enforcement
+│   └── post-send.sh               # PostToolUse hook for send enforcement
 ├── scripts/
-│   └── calendar-suggest.js  # Free slot finder
+│   ├── calendar-suggest.js        # Free slot finder
+│   ├── core/
+│   │   └── msg-core.sh            # Shared Matrix messaging utilities
+│   ├── line-sync.sh               # LINE message sync via Matrix
+│   ├── line-draft.sh              # LINE draft context collection
+│   ├── line-review.sh             # LINE draft validation
+│   ├── line-send.sh               # LINE send + verify
+│   ├── line-rooms.sh              # LINE room search
+│   ├── messenger-draft.sh         # Messenger draft context
+│   ├── messenger-send.sh          # Messenger send (Matrix + Chrome)
+│   └── autonomous/
+│       ├── dispatcher.sh          # Entry point for all autonomous modes
+│       ├── today.sh               # 5-channel unified triage
+│       ├── morning-briefing.sh    # Morning briefing generator
+│       ├── slack-bridge.sh        # Bidirectional Slack ↔ Claude bridge
+│       ├── notify.sh              # Slack DM notification sender
+│       ├── config.json            # Configuration for autonomous modes
+│       ├── lib/
+│       │   ├── common.sh          # Shared utilities (logging, locking)
+│       │   ├── slack-api.sh       # Slack Web API wrapper
+│       │   └── approval.sh        # HITL approval flow via Slack
+│       └── prompts/
+│           ├── triage-email.md    # Email classification prompt
+│           ├── triage-slack.md    # Slack classification prompt
+│           ├── triage-line.md     # LINE classification prompt
+│           ├── triage-messenger.md # Messenger classification prompt
+│           └── today-briefing.md  # Briefing generator prompt
 ├── examples/
-│   └── SOUL.md              # Example persona configuration
-└── README.md                # This file
+│   ├── SOUL.md                    # Example persona configuration
+│   ├── rules/
+│   │   ├── pre-send-checklist.md  # Pre-send verification
+│   │   ├── post-send-checklist.md # Post-send enforcement
+│   │   ├── session-start.md       # Session startup sequence
+│   │   ├── calendar-update.md     # Evidence-based calendar updates
+│   │   ├── self-awareness.md      # LLM self-correction patterns
+│   │   ├── parallel-execution.md  # Parallel task execution
+│   │   └── trigger-workflows.md   # Keyword → workflow triggers
+│   ├── skills/
+│   │   ├── line-skill.md          # LINE messaging skill
+│   │   └── messenger-skill.md     # Messenger messaging skill
+│   └── launchd/
+│       ├── com.chief-of-staff.today.plist    # Hourly triage
+│       └── com.chief-of-staff.morning.plist  # Daily briefing
+├── README.md                      # English documentation
+└── README.ja.md                   # Japanese documentation
 ```
 
 ---
@@ -393,6 +587,14 @@ Your relationship notes, preferences, and todos are valuable data. Git gives you
 ### Why a separate script for calendar logic?
 
 LLMs are bad at time math. "Find me 3 free 1-hour slots in the next 2 weeks, avoiding mornings" requires date arithmetic, timezone handling, and intersection calculations. `calendar-suggest.js` does this deterministically in ~100ms. The LLM's job is to format the output and compose the email — not to compute availability.
+
+### Why rules instead of just prompt instructions?
+
+Prompt instructions get forgotten. You can write "ALWAYS update the calendar after sending" in your system prompt, and Claude will still skip it 20% of the time. Rules in `.claude/rules/` are system-injected on every session — the LLM cannot choose to ignore them. Combined with hooks (which enforce at the tool level), you get two layers of reliability.
+
+### Why an autonomous layer?
+
+Interactive mode requires you to open a terminal and type a command. The autonomous layer (`scripts/autonomous/`) runs on a schedule via launchd or cron, using `claude -p` (non-interactive mode). This means your triage happens even when you're not at your desk. Results are posted to Slack, and the HITL approval flow ensures you maintain control.
 
 ### Why a Matrix bridge for LINE/Messenger?
 

@@ -38,7 +38,7 @@ AI: "田中様
      14:00〜15:00、大手町タワー2614会議室で
      お変わりなければ、そちらで確定させていただきます。
 
-     水野"
+     YOUR_SIGNATURE"
 
   + CC: a.yamada@sumitomo-bc.co.jp
   + Calendar: Moved event to 2/27, travel buffer added
