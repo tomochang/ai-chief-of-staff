@@ -222,6 +222,19 @@ claude /schedule-reply "来週の田中さんとのMTGについて返信して"
 
 ---
 
+## 対応チャンネル
+
+| チャネル | 取得方法 | 送信方法 | トリアージファイル |
+|---------|---------|---------|-----------------|
+| **メール** | `gog gmail search`（Gmail CLI） | `gog gmail send` | 自動アーカイブ |
+| **Slack** | Slack MCPサーバー | Slack MCP `conversations_add_message` | — |
+| **LINE** | Matrixブリッジ（mautrix-line）またはカスタム同期スクリプト | Matrixブリッジまたはカスタム送信スクリプト | `private/drafts/line-replies-YYYY-MM-DD.md` |
+| **Messenger** | Chrome CDP（Playwright） | Chrome AppleScript | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
+
+LINE・Messengerは**3層アーキテクチャ**: スキルルール（分類、トーン） → スクリプト（コンテキスト収集、送信、検証） → データファイル（トリアージ状態、関係性ノート、送信ログ）。
+
+---
+
 ## アーキテクチャ
 
 ```
@@ -377,19 +390,6 @@ cp examples/rules/*.md ~/your-workspace/.claude/rules/
 | `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
 
 </details>
-
----
-
-## 対応チャンネル
-
-| チャネル | 取得方法 | 送信方法 | トリアージファイル |
-|---------|---------|---------|-----------------|
-| **メール** | `gog gmail search`（Gmail CLI） | `gog gmail send` | 自動アーカイブ |
-| **Slack** | Slack MCPサーバー | Slack MCP `conversations_add_message` | — |
-| **LINE** | Matrixブリッジ（mautrix-line）またはカスタム同期スクリプト | Matrixブリッジまたはカスタム送信スクリプト | `private/drafts/line-replies-YYYY-MM-DD.md` |
-| **Messenger** | Chrome CDP（Playwright） | Chrome AppleScript | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
-
-LINE・Messengerは**3層アーキテクチャ**: スキルルール（分類、トーン） → スクリプト（コンテキスト収集、送信、検証） → データファイル（トリアージ状態、関係性ノート、送信ログ）。
 
 ---
 

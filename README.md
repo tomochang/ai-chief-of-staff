@@ -224,6 +224,19 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 
 ---
 
+## Supported Channels
+
+| Channel | Fetch method | Send method | Triage file |
+|---------|-------------|-------------|-------------|
+| **Email** | `gog gmail search` (or any Gmail CLI) | `gog gmail send` | Auto-archive |
+| **Slack** | Slack MCP server | Slack MCP `conversations_add_message` | — |
+| **LINE** | Matrix bridge (mautrix-line) or custom sync script | Matrix bridge or custom send script | `private/drafts/line-replies-YYYY-MM-DD.md` |
+| **Messenger** | Chrome CDP (Playwright) | Chrome AppleScript | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
+
+LINE and Messenger use a **3-layer architecture**: skill rules (classification, tone) → scripts (context collection, sending, validation) → data files (triage status, relationship notes, send logs).
+
+---
+
 ## Architecture
 
 ```
@@ -379,19 +392,6 @@ cp examples/rules/*.md ~/your-workspace/.claude/rules/
 | `YOUR_TODO_FILE` | `private/todo.md` | today.sh, morning-briefing.sh |
 
 </details>
-
----
-
-## Supported Channels
-
-| Channel | Fetch method | Send method | Triage file |
-|---------|-------------|-------------|-------------|
-| **Email** | `gog gmail search` (or any Gmail CLI) | `gog gmail send` | Auto-archive |
-| **Slack** | Slack MCP server | Slack MCP `conversations_add_message` | — |
-| **LINE** | Matrix bridge (mautrix-line) or custom sync script | Matrix bridge or custom send script | `private/drafts/line-replies-YYYY-MM-DD.md` |
-| **Messenger** | Chrome CDP (Playwright) | Chrome AppleScript | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
-
-LINE and Messenger use a **3-layer architecture**: skill rules (classification, tone) → scripts (context collection, sending, validation) → data files (triage status, relationship notes, send logs).
 
 ---
 
