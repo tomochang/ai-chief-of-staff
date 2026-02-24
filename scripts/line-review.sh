@@ -72,12 +72,14 @@ def has_tameguchi(s):
     return any(k in s for k in ['だよ', 'だね', 'じゃん', 'しよ', 'だろ', 'かな', 'よね'])
 
 # === Collect YOUR_NAME's messages ===
+import os as _os
+ADMIN_USER = _os.environ.get('MATRIX_ADMIN_USER', '@admin:matrix.local')
 self_msgs = []
 for e in data.get('chunk', []):
     if e.get('type') == 'm.room.message':
         sender = e.get('sender', '')
         body = e.get('content', {}).get('body', '')
-        if ('YOUR_MATRIX_USER_PARTIAL' in sender or sender == '@admin:matrix.local') and body and body not in ('sticker.png', 'image.jpg', ''):
+        if ('YOUR_MATRIX_USER_PARTIAL' in sender or sender == ADMIN_USER) and body and body not in ('sticker.png', 'image.jpg', ''):
             self_msgs.append(body)
 
 issues = []

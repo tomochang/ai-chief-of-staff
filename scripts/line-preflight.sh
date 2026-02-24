@@ -59,6 +59,7 @@ self_msgs = []
 all_msgs = []
 
 SELF_PARTIAL = os.environ.get('YOUR_MATRIX_USER_PARTIAL', 'YOUR_MATRIX_USER_PARTIAL')
+ADMIN_USER = os.environ.get('MATRIX_ADMIN_USER', '@admin:matrix.local')
 
 for e in reversed(data.get('chunk', [])):
     if e.get('type') == 'm.room.message':
@@ -66,7 +67,7 @@ for e in reversed(data.get('chunk', [])):
         body = e.get('content', {}).get('body', '')
         if not body or body in ('sticker.png', 'image.jpg'):
             continue
-        if SELF_PARTIAL in sender or sender == '@admin:matrix.local':
+        if SELF_PARTIAL in sender or sender == ADMIN_USER:
             self_msgs.append(body)
             all_msgs.append(('self', body))
         elif 'bot' not in sender.lower():
