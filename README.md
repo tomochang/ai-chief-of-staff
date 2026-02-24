@@ -1,5 +1,9 @@
 # AI Chief of Staff
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Release](https://img.shields.io/github/v/release/tomochang/ai-chief-of-staff)](https://github.com/tomochang/ai-chief-of-staff/releases)
+[![Claude Code](https://img.shields.io/badge/Built%20with-Claude%20Code-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
+
 **Turn Claude Code into your personal chief of staff.**
 
 > **Before:** Every morning, 45 minutes of context-switching — scan 3 inboxes, check Slack threads, scroll LINE, Messenger, and Chatwork, cross-reference calendar, draft replies, update your todo list. Things fall through the cracks. You forget to follow up. Calendar entries are missing meeting links.
