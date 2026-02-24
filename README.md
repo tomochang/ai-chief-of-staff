@@ -8,12 +8,13 @@ Every morning, you type `/today` in your terminal. That's it:
 - **Slack mentions and DMs, surfaced** — unanswered threads bubble up, noise stays hidden
 - **LINE messages, triaged** — official accounts skipped, personal chats needing replies flagged with context
 - **Messenger conversations, triaged** — page notifications filtered, 1-on-1 chats needing responses surfaced
-- **Today's calendar, displayed** — if a meeting link is missing, it gets auto-filled from your email
+- **Today's calendar, displayed** — if a meeting link is missing, it gets auto-filled from your email. Non-routine meetings flagged for prep
+- **Stale tasks and pending responses, triaged** — pending responses over 3 days get flagged, overdue tasks surfaced. Zero undecided items
 - **Draft replies for everything that needs one** — written in your tone, with your signature, informed by your relationship history with each person
 - **Scheduling? Free slots auto-calculated** — pulled from your calendar, respecting your preferences (no mornings, travel buffers, weekdays only)
 - **After you send: calendar, todo, and notes update themselves** — enforced by a hook, so nothing falls through the cracks
 
-The concept is simple. Take five inputs — email, Slack, LINE, Messenger, calendar — and pipe them through **classify → assist → execute → record**. Claude Code's `/command` system becomes the workflow engine. Hooks enforce reliability. Git persists your knowledge.
+The concept is simple. Take five inputs — email, Slack, LINE, Messenger, calendar — and pipe them through **classify → triage → assist → execute → record**. Claude Code's `/command` system becomes the workflow engine. Hooks enforce reliability. Git persists your knowledge.
 
 No code to write. No SDK. No API wrapper. **Edit a markdown file and the behavior changes instantly.**
 
@@ -23,11 +24,11 @@ $ claude /today
 # Today's Briefing — Feb 18, 2026 (Tue)
 
 ## Schedule (3)
-| Time        | Event                  | Location          |
-|-------------|------------------------|-------------------|
-| 10:00-11:00 | Team standup           | Zoom: https://... |
-| 14:00-15:00 | Client meeting         | Marunouchi Tower  |
-| 19:00-      | Dinner @Ebisu          | Tatsuya           |
+| Time        | Event                  | Location          | Prep?  |
+|-------------|------------------------|-------------------|--------|
+| 10:00-11:00 | Team standup           | Zoom: https://... | —      |
+| 14:00-15:00 | Client meeting         | Marunouchi Tower  | ⚠️     |
+| 19:00-      | Dinner @Ebisu          | Tatsuya           | —      |
 
 ## Email — Skipped (5) → auto-archived
 ## Email — Action Required (2)
@@ -51,13 +52,18 @@ work on my end: ...
 **Draft reply**: ...
 
 → [Send] [Edit] [Skip]
+
+## Triage Queue
+- Stale/critical pending responses: 2
+- Overdue tasks: 1
+→ All items decided in Step 3
 ```
 
 ---
 
 ## How It Works
 
-This kit gives Claude Code a **4-tier triage system** for all your communication channels — email, Slack, LINE, and Messenger:
+This kit gives Claude Code a **4-tier triage system** for all your communication channels, plus a **task triage step** that ensures zero undecided items:
 
 | Category | Condition | Action |
 |----------|-----------|--------|
@@ -71,9 +77,10 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 1. Update calendar (create tentative events for proposed dates)
 2. Update your relationship notes (who you talked to, what about)
 3. Update your todo list
-4. Update triage/status files (LINE/Messenger)
+4. Update pending response table (follow-up sent dates, resolved items removed, wait deadlines set)
 5. Git commit & push (version-control your knowledge)
 6. Archive the processed email
+7. Update LINE/Messenger triage files
 
 **The hook blocks completion until all steps are done.** You can't accidentally skip post-send processing.
 
@@ -187,6 +194,8 @@ Key placeholders to replace:
 | `YOUR_LINE_SKIP_ACCOUNTS` | `Starbucks, Nike, ...` | today.md |
 | `YOUR_MATRIX_SERVER` | `http://localhost:8008` | today.md |
 | `YOUR_MATRIX_ADMIN_TOKEN` | (env var) | today.md |
+| `YOUR_WORK_DOMAIN` | `company.com` | today.md |
+| `YOUR_TASK_LIST_COMMAND` | `gog tasks list` | today.md (optional) |
 
 ### 3. Set up your knowledge files
 
