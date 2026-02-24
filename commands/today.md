@@ -20,7 +20,9 @@ allowed-tools:
 
 ## Overview
 
-Fetch email, Slack, LINE, Messenger, and calendar/todo **in parallel**, generate today's briefing, then process all action_required items with reply drafts through to send + follow-up.
+Fetch email, Slack, LINE, Messenger, and calendar/todo **in parallel**, triage pending responses and tasks, generate today's briefing, then process all action_required items with reply drafts through to send + follow-up.
+
+**Goal:** Zero undecided items — every pending response, overdue task, and action_required message gets a decision before the briefing ends.
 
 ---
 
@@ -75,15 +77,37 @@ Using Slack MCP tools (equivalent to `/slack check`):
 
 Classify using the "Slack Classification Rules" section below.
 
-### Task 3: Calendar + Todo
+### Task 3: Calendar + Todo + Pending Responses
 
 Bash agent:
+
+#### 3a: Calendar events
 
 ```bash
 gog calendar events --today --max 30
 ```
 
-Also read `private/todo.md` and extract today's relevant incomplete tasks.
+#### 3b: Google Tasks (conditional)
+
+```bash
+YOUR_TASK_LIST_COMMAND --due-before tomorrow --include-overdue 2>/dev/null
+```
+
+If `YOUR_TASK_LIST_COMMAND` is not configured or the command fails, **skip gracefully** — the triage step will work with todo.md alone. When available, fetch:
+- Overdue tasks (due before today)
+- Today's tasks
+- Tomorrow's tasks (for advance planning)
+
+#### 3c: Pending Response analysis
+
+Read `private/todo.md` and extract:
+1. **Today's relevant incomplete tasks** (as before)
+2. **Pending Response table** — for each row, calculate days elapsed since `Date Sent`:
+   - **Critical** (>7 days, external): No `[Wait]` tag — likely dropped or lost
+   - **Stale** (>3 days): May need a nudge
+   - **Fresh** (≤3 days): Normal wait period
+
+Classify external vs internal using `YOUR_WORK_DOMAIN` — emails outside your work domain are external.
 
 ### Task 4: LINE fetch + classify
 
@@ -139,11 +163,13 @@ Combine all 5 Task results into this format:
 
 ## Schedule (N)
 
-| Time        | Event           | Location/Link     |
-|-------------|-----------------|-------------------|
-| 09:00-10:00 | Team standup    | Zoom: https://... |
-| 14:00-15:00 | Client meeting  | Office Building   |
-| 19:00-      | Dinner @Ebisu   | Restaurant Name   |
+| Time        | Event           | Location/Link     | Prep needed? |
+|-------------|-----------------|-------------------|--------------|
+| 09:00-10:00 | Team standup    | Zoom: https://... | —            |
+| 14:00-15:00 | Client meeting  | Office Building   | ⚠️           |
+| 19:00-      | Dinner @Ebisu   | Restaurant Name   | —            |
+
+> For each ⚠️: ask user "What do you need to prepare for [event]?" — add their answer as a task.
 
 ## Email
 
@@ -206,31 +232,84 @@ Combine all 5 Task results into this format:
 - [ ] Prepare for 14:00 client meeting
 - [ ] Submit expense report
 
+## Triage Queue (preview)
+- Stale/critical pending responses: N
+- Overdue tasks: N
+- Today's tasks: N
+
+→ Details in Step 3.
+
 ---
 
-Briefing complete. Processing N action_required items (email: N, Slack: N, LINE: N, Messenger: N).
+Briefing complete. N action_required items (email: N, Slack: N, LINE: N, Messenger: N). N triage items pending decision in Step 3.
 ```
 
 ---
 
-## Step 3: Process action_required
+## Step 3: Task Triage
 
-After outputting the briefing, **continue immediately** to handle replies.
+After outputting the briefing, triage all pending items before processing replies. **Zero undecided items.**
 
-### 3.1 Get sender context
+### 3.0 Build merged triage list
+
+Combine all sources into a single list:
+- Google Tasks overdue + today (if available from Task 3b)
+- Pending Response stale + critical (from Task 3c)
+- Meeting prep tasks (from ⚠️ items in Schedule)
+
+### 3.1 Stale Pending Responses (>3 days)
+
+For each stale/critical pending response, present options:
+
+**External critical (>7 days, no `[Wait]` tag):**
+- `[Follow up]` — draft a follow-up email/message (queued for Step 4)
+- `[Resolved]` — remove from Pending Response table
+
+**All other stale (>3 days):**
+- `[Follow up]` — draft a follow-up
+- `[Wait → YYYY-MM-DD]` — set explicit wait-until date
+- `[Resolved]` — remove from table
+
+### 3.2 Overdue tasks
+
+Google Tasks overdue (if available), otherwise overdue items from todo.md:
+- `[Do today]` — keep on today's list
+- `[Reschedule → YYYY-MM-DD]` — move to new date
+- `[Done]` — mark complete
+
+### 3.3 Today's tasks
+
+Review today's task list for feasibility:
+- `[OK]` — confirmed for today
+- `[Reschedule → YYYY-MM-DD]` — move to new date
+- `[Done]` — already complete
+
+### 3.4 Triage complete
+
+```
+N/N items decided. 0 undecided. M follow-up drafts queued for Step 4.
+```
+
+---
+
+## Step 4: Process action_required + follow-ups
+
+After triage, **continue immediately** to handle replies and follow-ups.
+
+### 4.1 Get sender context
 Read `private/relationships.md` for each sender
 
-### 3.2 Detect scheduling keywords
+### 4.2 Detect scheduling keywords
 ```
 schedule, meeting, availability, free time, calendar,
 when are you, can we meet, let's set up, time slot
 ```
 → If detected: `node YOUR_WORKSPACE/scripts/calendar-suggest.js --days 14 --prefer-start 11`
 
-### 3.3 meeting_info auto-processing
+### 4.3 meeting_info auto-processing
 Same as `/mail` — detect meeting info → calendar cross-reference → update gaps
 
-### 3.4 Generate reply drafts
+### 4.4 Generate reply drafts
 
 #### Email replies
 - **Signature**: YOUR_SIGNATURE
@@ -257,13 +336,20 @@ Same as `/mail` — detect meeting info → calendar cross-reference → update 
 - Messenger tends to be more formal than LINE (more business contacts)
 - No unnecessary apologies
 
-### 3.5 Present to user
+#### Follow-up replies (from Step 3 triage)
+
+Process all `[Follow up]` items queued during triage:
+- For each pending response marked `[Follow up]`, draft a follow-up message using the original channel (email, Slack, LINE, or Messenger)
+- Tone: polite nudge, reference the original request/date
+- Present to user with the same [Send] [Edit] [Skip] flow as action_required items
+
+### 4.5 Present to user
 For each action_required message:
 - Original message summary
 - Draft reply
 - Options: [Send] [Edit] [Skip]
 
-### 3.6 Send
+### 4.6 Send
 
 #### Email
 ```bash
@@ -304,30 +390,36 @@ YOUR_MESSENGER_SEND_COMMAND <name> <message> --chrome   # Browser fallback
 
 ---
 
-## Step 4: Post-send processing (mandatory)
+## Step 5: Post-send processing (mandatory)
 
 **After every send, execute ALL steps before moving to the next item.**
 
-### 4.1 Calendar registration
+### 5.1 Calendar registration
 Register confirmed/tentative events.
 
-### 4.2 Update relationships.md
+### 5.2 Update relationships.md
 Add interaction history.
 
-### 4.3 Update todo.md
+### 5.3 Update todo.md
 Reflect schedule changes and task updates.
 
-### 4.4 Git commit & push
+### 5.4 Update Pending Response table
+Apply triage decisions from Step 3:
+- `[Follow up]` sent → update `Date Sent` to today
+- `[Resolved]` → remove the row
+- `[Wait → YYYY-MM-DD]` → set `Wait until` date on the row
+
+### 5.5 Git commit & push
 ```bash
 cd YOUR_WORKSPACE && git add -A && git commit -m "today: morning triage (email/slack/line/messenger replies)" && git push
 ```
 
-### 4.5 Archive processed emails
+### 5.6 Archive processed emails
 ```bash
 gog gmail thread modify "<threadId>" --remove "INBOX,UNREAD" --force
 ```
 
-### 4.6 Update LINE/Messenger triage files
+### 5.7 Update LINE/Messenger triage files
 Mark processed items as completed in:
 - `private/drafts/line-replies-YYYY-MM-DD.md`
 - `private/drafts/messenger-replies-YYYY-MM-DD.md`
