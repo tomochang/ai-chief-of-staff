@@ -89,11 +89,14 @@ Also read `private/todo.md` and extract today's relevant incomplete tasks.
 
 Bash agent (equivalent to `/line check`):
 
+Fetch new messages via your LINE bridge (e.g. Matrix mautrix-line, or another integration):
+
 ```bash
-MATRIX_ADMIN_TOKEN="$MATRIX_ADMIN_TOKEN" bash scripts/line-sync.sh
+# Example: Matrix bridge approach
+YOUR_LINE_SYNC_COMMAND
 ```
 
-**既存トリアージファイル確認:**
+**Check for existing triage files:**
 ```bash
 ls -lt private/*line* private/drafts/*line* 2>/dev/null
 ```
@@ -104,20 +107,21 @@ Classify using LINE Classification Rules below.
 
 Bash agent (equivalent to `/messenger check`):
 
-**経路A: Matrix API（ブリッジ稼働時）**
+**Route A: Matrix bridge (when running)**
 ```bash
-TOKEN="$MATRIX_ADMIN_TOKEN"
+# Example: List Messenger rooms via Matrix Synapse admin API
+TOKEN="$YOUR_MATRIX_ADMIN_TOKEN"
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "http://127.0.0.1:8008/_synapse/admin/v1/rooms?limit=200" | \
-  python3 -c "import sys,json; [print(f'{r[\"room_id\"]} | {r.get(\"name\",\"?\")} | members:{r.get(\"joined_members\",0)}') for r in json.load(sys.stdin).get('rooms',[]) if 'meta' in str(r.get('creator','')).lower() or 'facebook' in str(r.get('name','')).lower()]"
+  "YOUR_MATRIX_SERVER/_synapse/admin/v1/rooms?limit=200"
+# Filter for rooms created by your Meta/Messenger bridge
 ```
 
-→ 各ルームの最新メッセージを取得し、未読・要返信を判定。
+→ Fetch latest messages from each room and determine which need replies.
 
-**経路B: Chrome AppleScript（ブリッジ停止時）**
-→ `procedures/by-domain/messenger/fb-messenger-chrome-control.proc.md` 参照
+**Route B: Browser automation (fallback when bridge is down)**
+→ See your Messenger browser-control procedure for details.
 
-**既存トリアージファイル確認:**
+**Check for existing triage files:**
 ```bash
 ls -lt private/*messenger* private/drafts/*messenger* 2>/dev/null
 ```
@@ -174,29 +178,29 @@ Combine all 5 Task results into this format:
 ## LINE
 
 ### Skipped (N)
-- CHANEL BEAUTY — キャンペーン通知
-- 東急ストア — ポイント案内
+- Official account — campaign notification
+- Store — point balance
 
 ### Info Only (N)
-- グループ「○○」— 雑談（サマリー）
+- Group "XX" — chat summary
 
 ### Action Required (N)
-#### 1. 田中太郎
-**最終メッセージ**: 今週末空いてる？
-**コンテキスト**: 友人、前回2/10に食事
+#### 1. Taro Tanaka
+**Last message**: Are you free this weekend?
+**Context**: Friend, last met 2/10
 
 ## Messenger
 
 ### Skipped (N)
-- ページ通知、マーケットプレイス
+- Page notifications, marketplace
 
 ### Info Only (N)
-- グループ「○○」— 雑談（サマリー）
+- Group "XX" — chat summary
 
 ### Action Required (N)
 #### 1. John Smith
-**最終メッセージ**: Are you free next week?
-**コンテキスト**: ビジネス、前回1/28にMTG
+**Last message**: Are you free next week?
+**Context**: Business, last met 1/28
 
 ## Todo (today)
 - [ ] Prepare for 14:00 client meeting
@@ -241,26 +245,17 @@ Same as `/mail` — detect meeting info → calendar cross-reference → update 
   - Friends → informal
 
 #### LINE replies
-- **必ず `line-draft.sh` を実行してからドラフトを書く**
-  ```bash
-  bash scripts/line-draft.sh <名前>
-  ```
-- relationships.md + チャット履歴 + 文体サンプルを読んでから作成
-- 敬語/タメ口を水野さんの過去文体に合わせる
-- 不要な謝罪を入れない
-- **ドラフト完成後、`line-review.sh` でレビュー（FAILなら送信禁止）**
-  ```bash
-  MATRIX_ADMIN_TOKEN="$MATRIX_ADMIN_TOKEN" bash scripts/line-review.sh <名前> <下書きテキスト>
-  ```
+- **Run your draft-context script before writing** (e.g. `line-draft.sh <name>`)
+- Read relationships.md + chat history + user's writing style samples before composing
+- Match the user's past tone (formal/casual) for each contact
+- No unnecessary apologies
+- **Review draft before sending** (e.g. `line-review.sh <name> <draft>`) — block send on FAIL
 
 #### Messenger replies
-- **必ず `messenger-draft.sh` を実行してからドラフトを書く**
-  ```bash
-  bash scripts/messenger-draft.sh <名前>
-  ```
-- relationships.md + チャット履歴 + 文体サンプルを読んでから作成
-- MessengerはLINEよりフォーマル寄り（ビジネス相手が多い）
-- 不要な謝罪を入れない
+- **Run your draft-context script before writing** (e.g. `messenger-draft.sh <name>`)
+- Read relationships.md + chat history + user's writing style samples before composing
+- Messenger tends to be more formal than LINE (more business contacts)
+- No unnecessary apologies
 
 ### 3.5 Present to user
 For each action_required message:
@@ -293,19 +288,19 @@ mcp__slack__conversations_add_message:
 
 #### LINE
 ```bash
-bash scripts/line-send.sh <名前> <メッセージ>
+YOUR_LINE_SEND_COMMAND <name> <message>
 ```
-- 送信後、ステータステーブル（`private/drafts/line-replies-YYYY-MM-DD.md`）を更新
-- **グループチャットへの送信は禁止**（水野さんの明示的指示がある場合のみ）
+- Update triage/status table (`private/drafts/line-replies-YYYY-MM-DD.md`) after send
+- **No group chat sends** unless the user explicitly instructs it
 
 #### Messenger
 ```bash
-bash scripts/messenger-send.sh <名前> <メッセージ>            # Matrix経由
-bash scripts/messenger-send.sh <名前> <メッセージ> --chrome    # Chrome fallback
+YOUR_MESSENGER_SEND_COMMAND <name> <message>           # Primary route
+YOUR_MESSENGER_SEND_COMMAND <name> <message> --chrome   # Browser fallback
 ```
-- Matrix送信失敗 → `--chrome` にフォールバック
-- 送信後、ステータステーブル（`private/drafts/messenger-replies-YYYY-MM-DD.md`）を更新
-- **グループ/複数人スレッドへの送信は禁止**
+- Primary send failure → fall back to browser automation
+- Update triage/status table (`private/drafts/messenger-replies-YYYY-MM-DD.md`) after send
+- **No group/multi-person thread sends**
 
 ---
 
@@ -403,24 +398,21 @@ Use the full thread context to judge — a customer saying "I was told by [your 
 ## LINE Classification Rules
 
 ### skip
-- 公式アカウント（店舗・ブランド・サービス）:
+- Official/brand accounts (stores, services, marketing):
   ```
-  CHANEL BEAUTY, EDIFICE, Ralph Lauren, 東急ストア,
-  LINEマイカード, ニューバランス, SMART GOLF, TIME SHARING,
-  ブラック会員専用コンシェルジュ, BEE8 渋谷, C.STAND,
-  にくだらけ, シーシャと自家製チャイ hælo, Starbucks
+  YOUR_LINE_SKIP_ACCOUNTS
   ```
-- スタンプのみのメッセージ
-- グループの雑談（返信不要）
+- Sticker-only messages
+- Group chat noise (no reply expected)
 
 ### info_only
-- グループチャットの会話（サマリーのみ表示）
-- 既読確認のみ
+- Group chat conversations (show summary only)
+- Read receipts only
 
 ### action_required
-- 個人チャットで相手が最終メッセージ（`needs_reply` = true）
-- 質問、約束の確認、日程調整、返事を求める内容
-- **グループチャットは action_required にしない**（水野さんの明示指示がない限り）
+- 1-on-1 chat where the other person sent the last message (`needs_reply` = true)
+- Questions, confirmations, scheduling requests, messages expecting a response
+- **Group chats are never action_required** unless the user explicitly instructs otherwise
 
 ### Priority: skip > action_required > info_only
 
@@ -429,16 +421,16 @@ Use the full thread context to judge — a customer saying "I was told by [your 
 ## Messenger Classification Rules
 
 ### skip
-- ページ通知、広告、マーケットプレイス通知
-- 営業スパム（ブロック検討）
+- Page notifications, ads, marketplace notifications
+- Sales spam (consider blocking)
 
 ### info_only
-- グループの雑談
-- スタンプ/リアクションのみ
+- Group conversations
+- Sticker/reaction only
 
 ### action_required
-- 個人チャットで相手が最終メッセージ
-- 質問、約束の確認、日程調整、返事を求める内容
-- **グループ/複数人スレッドは action_required にしない**
+- 1-on-1 chat where the other person sent the last message
+- Questions, confirmations, scheduling requests, messages expecting a response
+- **Group/multi-person threads are never action_required**
 
 ### Priority: skip > action_required > info_only
