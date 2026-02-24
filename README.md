@@ -6,7 +6,7 @@
 >
 > **After:** You type `/today`. Five minutes later, everything is triaged, replies are drafted, calendar is updated, and nothing is forgotten — because a hook physically blocks you from moving on until it's done.
 
-I've been running this daily since January 2026. This README describes my actual production workflow.
+I'm VP at [UPSIDER](https://up-sider.com) (corporate card startup, acquired by [Mizuho Financial Group](https://www.mizuho-fg.com/)). Between board meetings, investor calls, and 5+ external meetings a day across email, Slack, LINE, and Messenger — I needed a system where nothing falls through the cracks. I've been running this daily since January 2026.
 
 Every morning, you type `/today` in your terminal. That's it:
 
