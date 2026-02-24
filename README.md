@@ -24,66 +24,9 @@ The concept is simple. Take five inputs — email, Slack, LINE, Messenger, calen
 
 Almost no code to write — the core system is markdown prompts. Hooks and scripts are lightweight bash/JS glue. **Edit a prompt file and the behavior changes instantly.**
 
-```
-$ claude /today
-
-# Today's Briefing — Feb 18, 2026 (Tue)
-
-## Schedule (4)
-| Time        | Event                          | Location          | Prep?  |
-|-------------|--------------------------------|-------------------|--------|
-| 10:00-11:00 | Weekly product sync            | Zoom: https://... | —      |
-| 13:00-14:00 | 1:1 with Kenji (design review) | Office 3F         | —      |
-| 15:00-16:00 | Sequoia partner call           | Google Meet       | ⚠️     |
-| 19:30-      | Dinner with Ryo @Ebisu         | Afuri (ramen)     | —      |
-
-## Email — Skipped (8) → auto-archived
-  GitHub notifications (3), Stripe receipts (2), Slack digests (2), newsletter (1)
-
-## Email — Action Required (2)
-
-### 1. Sarah Chen <sarah@sequoia.com>
-**Subject**: Re: Feb board deck — a few questions
-**Summary**: Asking for updated ARR numbers and Q1 hiring plan
-before Thursday's board prep
-
-**Draft reply**:
-Hi Sarah, thanks for flagging these. I'll have the updated
-ARR slide and hiring plan to you by EOD Wednesday. ...
-
-→ [Send] [Edit] [Skip]
-
-### 2. 松野陽子 <yoko@helixes.co>
-**Subject**: 業務委託契約の更新について
-**Summary**: Current contract expires 3/31, asking to renew
-
-**Draft reply**:
-松野様　お世話になっております。
-契約更新の件、承知いたしました。
-同条件での更新で問題ございません。...
-
-→ [Send] [Edit] [Skip]
-
-## LINE — Action Required (1)
-
-### 1. Ryo
-**Last message**: 今日の店やっぱアフリにしない？19:30で予約した
-**Context**: College friend, dinner tonight
-
-**Draft reply**: おー最高👍 19:30了解！
-
-→ [Send] [Edit] [Skip]
-
-## Slack — Action Required (1)
-
-### 1. #product-dev — @you by Kenji
-**Message**: Can you review the Figma before our 1:1?
-**Context**: Design review for v2 onboarding flow
-
-**Draft reply**: Will take a look before 1pm 👀
-
-→ [Send] [Edit] [Skip]
-```
+<p align="center">
+  <img src="docs/demo.gif" alt="demo of /today command" width="700">
+</p>
 
 ---
 
