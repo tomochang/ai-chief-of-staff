@@ -177,9 +177,56 @@ Classify using the "Chatwork Classification Rules" section below.
 
 ---
 
+## Step 1.5: Cross-platform deduplication
+
+After all Tasks return, **before** generating the briefing, detect and merge duplicate topics that span multiple platforms.
+
+### Detection rules
+
+Flag items as "same topic" when **any** of these match:
+
+| Signal | Example |
+|--------|---------|
+| **Same person × same keywords** | Slack DM @alice "deploy review" + email alice@... "Re: Deploy review" |
+| **Cross-posted link** | Email contains a Slack permalink, or Slack message quotes an email |
+| **Same meeting reference** | Email with Zoom link + Slack "see you at standup" + calendar event |
+| **Forward / CC expansion** | Email CC'd to team → same content pasted in Slack channel |
+
+**Identity matching**: Use `private/relationships.md` (or equivalent contact file) to resolve the same person across platforms (e.g. Slack @alice = email alice@corp.com = LINE Alice).
+
+### Merge rules
+
+1. **Pick a primary platform** — where the main conversation lives (where you should reply)
+   - The platform with a direct question/request → primary
+   - If both have questions → the earlier one
+   - If one is notification-only (CC, forward) → the other is primary
+
+2. **Promote classification** — use the highest tier across platforms
+   ```
+   action_required > meeting_info > info_only > skip
+   ```
+   Example: email info_only + Slack action_required → action_required (reply via Slack)
+
+3. **Cross-reference in briefing** — show merged items under the primary platform with a link to the secondary
+   ```
+   #### 1. Alice Chen - Deploy review
+   **Slack DM** @alice: Requesting approval for production deploy
+   **📎 Also**: email alice@... "Re: Deploy review" (same topic → replying via Slack)
+   ```
+
+4. **Single reply** — only draft a reply on the primary platform. Mark the secondary as "covered by [platform] reply"
+
+### Skip dedup for
+
+- skip × skip pairs — both get archived, no detection needed
+- Same person but clearly different topics
+- Messages more than 24 hours apart — treat as separate
+
+---
+
 ## Step 2: Generate briefing
 
-Combine all 6 Task results into this format:
+Combine all Task results (with Step 1.5 dedup applied) into this format:
 
 ```
 # Today's Briefing — YYYY-MM-DD (Day)
@@ -214,6 +261,7 @@ Combine all 6 Task results into this format:
 
 #### 2. Alice Chen - Agenda review
 **Summary**: Needs input before Friday
+**📎 Also**: Slack DM @alice (same topic → replying via email)
 
 ## Slack
 
@@ -223,6 +271,7 @@ Combine all 6 Task results into this format:
 
 ### DMs (N)
 1. @charlie: Timeline update?
+   **📎 Also**: LINE Charlie (same scheduling thread → replying via Slack)
 
 ## LINE
 
