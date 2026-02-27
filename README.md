@@ -1,7 +1,7 @@
 # AI Chief of Staff
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/badge/release-v1.0.0-blue)](https://github.com/tomochang/ai-chief-of-staff/releases/tag/v1.0.0)
+[![Release](https://img.shields.io/badge/release-v1.1.0-blue)](https://github.com/tomochang/ai-chief-of-staff/releases/tag/v1.1.0)
 [![Claude Code](https://img.shields.io/badge/Built%20with-Claude%20Code-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
 
 **Turn Claude Code into your personal chief of staff.**
@@ -54,7 +54,7 @@ cp commands/mail.md ~/.claude/commands/
 # Workspace files
 mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts,private}
 cp skills/schedule-reply/SKILL.md ~/your-workspace/skills/schedule-reply/
-cp hooks/post-send.sh ~/your-workspace/hooks/
+cp hooks/post-action-check.sh ~/your-workspace/hooks/
 cp scripts/calendar-suggest.js ~/your-workspace/scripts/
 cp examples/SOUL.md ~/your-workspace/
 ```
@@ -114,11 +114,11 @@ In your project's `.claude/settings.local.json`:
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|mcp__slack__conversations_add_message",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/your-workspace/hooks/post-send.sh"
+            "command": "bash ~/your-workspace/hooks/post-action-check.sh"
           }
         ]
       }
@@ -179,7 +179,7 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 | **Email** | `gog gmail search` (or any Gmail CLI) | `gog gmail send` | Auto-archive |
 | **Slack** | Slack MCP server | Slack MCP `conversations_add_message` | — |
 | **LINE** | Matrix bridge (mautrix-line) or custom sync script | Matrix bridge or custom send script | `private/drafts/line-replies-YYYY-MM-DD.md` |
-| **Messenger** | Chrome CDP (Playwright) | Chrome AppleScript | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
+| **Messenger** | Chrome CDP (Playwright) | Chrome CDP + `keyboard.type()` (Playwright) | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
 | **Chatwork** | `chatwork-fetch.sh` (curl + jq) | Chatwork REST API (curl) | — |
 
 LINE and Messenger use a **3-layer architecture**: skill rules (classification, tone) → scripts (context collection, sending, validation) → data files (triage status, relationship notes, send logs).
@@ -208,7 +208,7 @@ LINE and Messenger use a **3-layer architecture**: skill rules (classification, 
 └──────────────────┬──────────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────────┐
-│  Hooks (hooks/post-send.sh)                      │
+│  Hooks (hooks/post-action-check.sh)                │
 │  ↳ PostToolUse enforcement layer                │
 │  ↳ Blocks completion until checklist done       │
 └──────────────────┬──────────────────────────────┘
@@ -277,13 +277,15 @@ Replace `YOUR_MATRIX_SERVER`, `YOUR_MATRIX_ADMIN_TOKEN`, `YOUR_MATRIX_USER_PARTI
 
 ### Add Messenger
 
-Requires Google Chrome with Messenger logged in (macOS).
+Requires Google Chrome and Node.js + Playwright (macOS).
 
 ```bash
 cp scripts/messenger-*.sh ~/your-workspace/scripts/
+cp scripts/messenger-send-cdp.js ~/your-workspace/scripts/
+cd ~/your-workspace/scripts && npm install playwright
 ```
 
-Replace `YOUR_MATRIX_USER_PARTIAL` in the scripts. See `examples/skills/messenger-skill.md` for the Chrome CDP/AppleScript workflow.
+Replace `YOUR_MATRIX_USER_PARTIAL` in the scripts. The recommended send mode is `--cdp` (Chrome CDP + Playwright), which works with E2EE chats. See `docs/messenger-e2ee-send-investigation.md` for technical details and `examples/skills/messenger-skill.md` for the full workflow.
 
 ### Add Chatwork
 
@@ -467,7 +469,9 @@ Scripts for LINE and Messenger messaging. LINE uses a Matrix bridge; Messenger u
 | `line-send.sh` | LINE | Send via Matrix + verify delivery |
 | `line-rooms.sh` | LINE | Search rooms via VPS Matrix bridge |
 | `messenger-draft.sh` | Messenger | Collect context via Chrome CDP (Matrix fallback) |
-| `messenger-send.sh` | Messenger | Send via Chrome AppleScript |
+| `messenger-send.sh` | Messenger | Send via CDP (Playwright) / Matrix / Chrome AppleScript |
+| `messenger-send-cdp.js` | Messenger | CDP + keyboard.type() send (E2EE compatible) |
+| `context-lookup.sh` | Shared | Search relationships/todo/calendar by keyword |
 
 ### Skills
 
@@ -552,7 +556,7 @@ ai-chief-of-staff/
 │   └── schedule-reply/
 │       └── SKILL.md               # Multi-phase scheduling skill
 ├── hooks/
-│   └── post-send.sh               # PostToolUse hook for send enforcement
+│   └── post-action-check.sh       # PostToolUse hook (send, calendar, Slack enforcement)
 ├── scripts/
 │   ├── calendar-suggest.js        # Free slot finder
 │   ├── chatwork-fetch.sh          # Chatwork API fetcher (curl + jq)
@@ -564,7 +568,9 @@ ai-chief-of-staff/
 │   ├── line-send.sh               # LINE send + verify
 │   ├── line-rooms.sh              # LINE room search
 │   ├── messenger-draft.sh         # Messenger draft context
-│   ├── messenger-send.sh          # Messenger send (Chrome AppleScript)
+│   ├── messenger-send.sh          # Messenger send (CDP/Matrix/AppleScript)
+│   ├── messenger-send-cdp.js      # CDP + keyboard.type() send (E2EE compatible)
+│   ├── context-lookup.sh          # Search relationships/todo/calendar by keyword
 │   └── autonomous/
 │       ├── dispatcher.sh          # Entry point for all autonomous modes
 │       ├── today.sh               # 5-channel unified triage
@@ -598,6 +604,8 @@ ai-chief-of-staff/
 │   └── launchd/
 │       ├── com.chief-of-staff.today.plist    # Hourly triage
 │       └── com.chief-of-staff.morning.plist  # Daily briefing
+├── docs/
+│   └── messenger-e2ee-send-investigation.md  # E2EE send technical investigation
 ├── README.md                      # English documentation
 └── README.ja.md                   # Japanese documentation
 ```
@@ -638,9 +646,9 @@ Interactive mode requires you to open a terminal and type a command. The autonom
 
 The LINE API requires a business account. A Matrix bridge ([mautrix-line](https://github.com/mautrix/line)) provides a unified API layer that works with personal accounts. The bridge handles authentication, message syncing, and delivery — your scripts just talk to the Matrix HTTP API.
 
-### Why Chrome CDP/AppleScript for Messenger?
+### Why Chrome CDP/Playwright for Messenger?
 
-Messenger has no personal-use API. Instead of a bridge, we use Chrome CDP (Playwright) to read unread messages and Chrome AppleScript to send them. This requires Chrome running with Messenger logged in on a Mac. `document.execCommand('insertText')` handles React-compatible text input, and `KeyboardEvent('keydown', {key:'Enter'})` triggers send. The scripts handle focus management, delays for Messenger's reactive updates, and E2EE chat URL patterns.
+Messenger has no personal-use API. We use Chrome CDP (Playwright) to both read unread messages and send replies. A headless Chrome instance runs on port 9222 with your profile cookies, and Playwright connects via `connectOverCDP`. For E2EE (end-to-end encrypted) chats, `document.execCommand('insertText')` and Playwright's `fill()` **do not work** — the React-managed textbox ignores DOM mutations. The only reliable method is `keyboard.type()`, which sends OS-level input events that React's event system correctly captures. See `docs/messenger-e2ee-send-investigation.md` for the full technical investigation.
 
 ---
 
