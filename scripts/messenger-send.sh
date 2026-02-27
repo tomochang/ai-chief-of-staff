@@ -1,13 +1,19 @@
 #!/bin/bash
 # messenger-send.sh — Messenger send + verification + auto status update
-# Usage: messenger-send.sh <recipient name> <message> [--chrome]
+# Usage: messenger-send.sh <recipient name> <message> [--cdp|--chrome]
 #
-# Default: Matrix bridge
-# --chrome: Chrome AppleScript fallback (when bridge is down)
+# Modes:
+#   (default)  Matrix bridge
+#   --cdp      CDP + Playwright (recommended for E2EE chats)
+#   --chrome   Chrome AppleScript fallback (legacy, does NOT work with E2EE)
+#
+# CDP mode options:
+#   --thread <id>  E2EE thread ID (skips search, more reliable)
+#   --dry-run      Type message but don't send
 #
 # Flow:
 # 1. Approval check (status file verification)
-# 2. Send (Matrix API or Chrome AppleScript)
+# 2. Send (Matrix API / CDP+Playwright / Chrome AppleScript)
 # 3. Response verification
 # 4. Auto status file update
 # 5. Post-send task list
@@ -17,12 +23,22 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/core/msg-core.sh"
 
-NAME="${1:?Usage: messenger-send.sh <name> <message> [--chrome]}"
-MESSAGE="${2:?Usage: messenger-send.sh <name> <message> [--chrome]}"
+NAME="${1:?Usage: messenger-send.sh <name> <message> [--cdp|--chrome]}"
+MESSAGE="${2:?Usage: messenger-send.sh <name> <message> [--cdp|--chrome]}"
 MODE="matrix"
-if [[ "${3:-}" == "--chrome" ]]; then
-  MODE="chrome"
-fi
+THREAD_ID=""
+DRY_RUN=""
+shift 2
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --cdp) MODE="cdp" ;;
+    --chrome) MODE="chrome" ;;
+    --thread) THREAD_ID="${2:?--thread requires a value}"; shift ;;
+    --dry-run) DRY_RUN="--dry-run" ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
+  esac
+  shift
+done
 
 DRAFT_FILE="$MSG_DRAFT_DIR/messenger-replies-$MSG_TODAY.md"
 TRIAGE_FILE="${TRIAGE_DIR:-$WORKSPACE/private}/messenger_triage_$MSG_TODAY.md"
@@ -65,10 +81,55 @@ if [ "$MODE" = "matrix" ]; then
 
   echo "✅ Send success: $EVENT_ID"
 
+elif [ "$MODE" = "cdp" ]; then
+  # ==================== CDP + Playwright ====================
+  # Recommended for E2EE chats. Requires headless Chrome on port 9222.
+
+  echo "📤 Sending via CDP + Playwright..."
+
+  CDP_ARGS=(--to "$NAME" --message "$MESSAGE")
+  if [ -n "$THREAD_ID" ]; then
+    CDP_ARGS=(--thread "$THREAD_ID" --message "$MESSAGE")
+  fi
+  if [ -n "$DRY_RUN" ]; then
+    CDP_ARGS+=("--dry-run")
+  fi
+
+  RESULT=$(node "$SCRIPT_DIR/messenger-send-cdp.js" "${CDP_ARGS[@]}" 2>&1)
+  EXIT_CODE=$?
+
+  if [ $EXIT_CODE -ne 0 ]; then
+    echo "❌ CDP send failed:"
+    echo "$RESULT"
+    exit 1
+  fi
+
+  # Parse JSON result from stdout (last line)
+  SUCCESS=$(echo "$RESULT" | tail -1 | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('success',''))" 2>/dev/null || echo "")
+
+  if [ "$SUCCESS" != "True" ]; then
+    echo "❌ Send verification failed"
+    echo "$RESULT"
+    exit 1
+  fi
+
+  if [ -n "$DRY_RUN" ]; then
+    echo "🔍 DRY RUN — message typed but not sent"
+    echo "$RESULT"
+    exit 0
+  fi
+
+  echo "✅ Send success (CDP)"
+
 elif [ "$MODE" = "chrome" ]; then
-  # ==================== Chrome AppleScript ====================
+  # ==================== Chrome AppleScript (Legacy) ====================
+  # ⚠️ WARNING: execCommand does NOT work with E2EE chats.
+  # Use --cdp mode instead for E2EE conversations.
   # Prerequisite: Chrome with Messenger tab open on Mac + chat visible
 
+  echo "⚠️ WARNING: Chrome AppleScript mode does NOT work with E2EE chats."
+  echo "   Use --cdp mode instead: messenger-send.sh \"$NAME\" \"$MESSAGE\" --cdp"
+  echo ""
   echo "⚠️ Chrome AppleScript sending: either run directly on Mac,"
   echo "   or use browser tool (profile=chrome) to operate."
   echo ""
