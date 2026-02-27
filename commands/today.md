@@ -378,7 +378,19 @@ N/N items decided. 0 undecided. M follow-up drafts queued for Step 4.
 After triage, **continue immediately** to handle replies and follow-ups.
 
 ### 4.1 Get sender context
-Read `private/relationships.md` for each sender
+
+For each action_required sender, check **local files first** before searching Slack/email:
+
+1. Search `private/relationships.md` for the sender name
+2. Search `private/todo.md` for related entries
+3. Search calendar (next 30 days) for existing events with the sender
+
+If you have a context-lookup script, use it:
+```bash
+YOUR_WORKSPACE/scripts/context-lookup.sh "<sender_name>"
+```
+
+Only proceed to Slack/email search if local context is insufficient.
 
 ### 4.2 Detect scheduling keywords
 ```
