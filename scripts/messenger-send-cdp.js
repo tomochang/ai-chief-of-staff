@@ -1,24 +1,26 @@
 #!/usr/bin/env node
 /**
- * Messenger送信スクリプト — CDP接続 + keyboard.type() 方式
+ * Messenger Send Script — CDP + keyboard.type() approach
  *
- * 既存のheadless Chrome（port 9222）にCDP接続してメッセージ送信する。
- * E2EE (暗号化) チャットでは execCommand/fill() が効かないため、
- * keyboard.type() + Shift+Enter で入力する。
+ * Connects to an existing headless Chrome (CDP port) to send messages.
+ * E2EE (encrypted) chats require keyboard.type() since execCommand/fill()
+ * don't work with React-managed contenteditable textboxes.
  *
  * Usage:
- *   node messenger-send-cdp.js --to "相手名" --message "了解です！"
- *   node messenger-send-cdp.js --thread <threadId> --message "了解です！"
- *   node messenger-send-cdp.js --to "相手名" --message "1行目\n2行目" --dry-run
+ *   node messenger-send-cdp.js --to "Recipient Name" --message "Hello!"
+ *   node messenger-send-cdp.js --thread <threadId> --message "Hello!"
+ *   node messenger-send-cdp.js --thread <threadId> --e2ee --message "Hello!"
+ *   node messenger-send-cdp.js --to "Recipient" --message "Line 1\nLine 2" --dry-run
  *
  * Options:
- *   --to <name>         宛先の名前（検索で使用）
- *   --thread <id>       E2EEスレッドID（URLの末尾の数字。--toより優先）
- *   --message <text>    送信メッセージ（\n で改行）
- *   --dry-run           入力まで行うが送信しない
- *   --debug             デバッグスクリーンショット保存
- *   --port <number>     CDP port（デフォルト: 9222）
- *   --timeout <ms>      各ステップのタイムアウト（デフォルト: 10000）
+ *   --to <name>         Recipient name (used for search)
+ *   --thread <id>       Thread ID (from URL's /t/<id>). Takes priority over --to
+ *   --e2ee              Thread is E2EE (use /e2ee/t/<id> URL). Only with --thread
+ *   --message <text>    Message to send (\n for newlines)
+ *   --dry-run           Type message but don't send
+ *   --debug             Save debug screenshots
+ *   --port <number>     CDP port (default: 9222)
+ *   --timeout <ms>      Per-step timeout (default: 10000)
  *
  * Prerequisites:
  *   - npm install playwright (in this directory)
@@ -45,6 +47,7 @@ function parseArgs() {
   const opts = {
     to: null,
     thread: null,
+    e2ee: false,
     message: null,
     dryRun: false,
     debug: false,
@@ -59,6 +62,9 @@ function parseArgs() {
         break;
       case "--thread":
         opts.thread = args[++i];
+        break;
+      case "--e2ee":
+        opts.e2ee = true;
         break;
       case "--message":
         opts.message = args[++i];
@@ -80,10 +86,10 @@ function parseArgs() {
 
   if (!opts.message || (!opts.to && !opts.thread)) {
     console.error(
-      'Usage: node messenger-send-cdp.js --to "名前" --message "メッセージ"',
+      'Usage: node messenger-send-cdp.js --to "Name" --message "Message"',
     );
     console.error(
-      '       node messenger-send-cdp.js --thread <threadId> --message "メッセージ"',
+      '       node messenger-send-cdp.js --thread <threadId> --message "Message"',
     );
     process.exit(1);
   }
@@ -95,12 +101,25 @@ function parseArgs() {
  * Remove overlays that block textbox interaction.
  * Messenger frequently shows dialogs (PIN recovery, E2E notices, etc.)
  * that intercept pointer events.
+ *
+ * NOTE: Do NOT press Escape — it triggers E2EE restore dialog.
  */
 async function dismissOverlays(page) {
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(500);
-
   await page.evaluate(() => {
+    // Click dismiss buttons first (e.g. "Not now", "Don't restore")
+    const buttons = document.querySelectorAll('[role="button"], button');
+    for (const btn of buttons) {
+      const text = btn.textContent || "";
+      if (
+        text.includes("Not now") ||
+        text.includes("Don't restore") ||
+        text.includes("Continue without restoring")
+      ) {
+        btn.click();
+        break;
+      }
+    }
+
     // Remove dialog elements
     document.querySelectorAll('[role="dialog"]').forEach((el) => el.remove());
     document
@@ -120,31 +139,19 @@ async function dismissOverlays(page) {
         }
       }
     });
-
-    // Click dismiss buttons if present
-    const buttons = document.querySelectorAll('[role="button"], button');
-    for (const btn of buttons) {
-      const text = btn.textContent || "";
-      if (
-        text.includes("復元しない") ||
-        text.includes("Not now") ||
-        text.includes("後で")
-      ) {
-        btn.click();
-        break;
-      }
-    }
   });
   await page.waitForTimeout(500);
 }
 
 /**
  * Navigate to chat — either by thread ID (direct URL) or search.
- * Thread ID is more reliable for known contacts.
+ * Thread ID (from messenger-check-cdp.js output) is more reliable.
  */
 async function navigateToThread(page, opts) {
   if (opts.thread) {
-    const url = `https://www.messenger.com/e2ee/t/${opts.thread}`;
+    // Direct navigation via thread ID
+    const prefix = opts.e2ee ? "e2ee/t" : "t";
+    const url = `https://www.messenger.com/${prefix}/${opts.thread}`;
     console.error(`Navigating to thread: ${url}`);
 
     if (!page.url().includes(opts.thread)) {
@@ -157,12 +164,12 @@ async function navigateToThread(page, opts) {
     return true;
   }
 
-  // Search-based navigation
+  // Search-based navigation (fallback when thread ID is not available)
   console.error(`Searching for: ${opts.to}`);
 
   const searchInput = page
     .locator(
-      '[placeholder*="Messenger"], [placeholder*="検索"], [aria-label*="検索"]',
+      '[placeholder*="Messenger"], [placeholder*="Search"], [aria-label*="Search"]',
     )
     .first();
 
@@ -176,15 +183,66 @@ async function navigateToThread(page, opts) {
   await searchInput.fill(opts.to);
   await page.waitForTimeout(2000);
 
-  const searchResult = page
-    .locator(
-      `[role="listitem"]:has-text("${opts.to}"), [role="row"]:has-text("${opts.to}"), [role="option"]:has-text("${opts.to}")`,
-    )
-    .first();
+  // Remove "Search messages with..." overlay that intercepts clicks
+  await page.evaluate(() => {
+    document.querySelectorAll("span").forEach((el) => {
+      const text = el.textContent || "";
+      if (text.includes("Search") && text.includes("in")) {
+        const parent = el.closest(
+          '[role="row"], [role="listitem"], [role="option"]',
+        );
+        if (parent) parent.remove();
+      }
+    });
+  });
+  await page.waitForTimeout(300);
 
-  if ((await searchResult.count()) > 0) {
-    await searchResult.click();
+  // Click search result — prefer exact 1:1 DM match over group chats
+  const searchName = opts.to;
+  const allResults = page.locator(
+    `[role="listitem"]:has-text("${searchName}"), [role="row"]:has-text("${searchName}"), [role="option"]:has-text("${searchName}")`,
+  );
+  const resultCount = await allResults.count();
+
+  if (resultCount > 0) {
+    let bestIdx = 0;
+
+    if (resultCount > 1) {
+      // Score each result: exact name match (1:1 DM) > partial match (group)
+      const texts = [];
+      for (let i = 0; i < resultCount; i++) {
+        const text = await allResults.nth(i).innerText();
+        texts.push(text);
+      }
+
+      let bestScore = -1;
+      for (let i = 0; i < texts.length; i++) {
+        const t = texts[i].trim();
+        const firstLine = t.split("\n")[0].trim();
+        let score = 0;
+        if (firstLine === searchName) {
+          score = 100; // Exact match = 1:1 DM
+        } else if (firstLine.startsWith(searchName)) {
+          score = 80;
+        } else if (t.includes(",") || t.includes("\u3001")) {
+          score = 10; // Group chat (contains comma/Japanese comma separators)
+        } else {
+          score = 50; // Partial match
+        }
+        console.error(
+          `  result[${i}] score=${score}: ${firstLine.substring(0, 60)}`,
+        );
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
+        }
+      }
+      console.error(`  -> selecting result[${bestIdx}]`);
+    }
+
+    await allResults.nth(bestIdx).click({ force: true });
   } else {
+    console.error("No search results found, pressing Enter");
     await page.keyboard.press("Enter");
   }
   await page.waitForTimeout(2000);
@@ -211,7 +269,25 @@ async function typeMessage(page, message, timeout) {
 
   // Force click bypasses overlays that intercept pointer events
   await textbox.click({ force: true });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(300);
+
+  // Clear any existing text in the textbox before typing
+  // (prevents duplicate text from previous dry-run or failed send)
+  const existingText = await page.evaluate(() => {
+    const input = document.querySelector(
+      '[role="textbox"][contenteditable="true"]',
+    );
+    return input ? input.innerText.trim() : "";
+  });
+  if (existingText.length > 0) {
+    console.error(`Clearing existing text (${existingText.length} chars)...`);
+    const modKey = process.platform === "darwin" ? "Meta" : "Control";
+    await page.keyboard.down(modKey);
+    await page.keyboard.press("a");
+    await page.keyboard.up(modKey);
+    await page.keyboard.press("Backspace");
+    await page.waitForTimeout(300);
+  }
 
   // Split by literal \n and type with Shift+Enter for newlines
   const lines = message.split("\\n");
@@ -238,7 +314,7 @@ async function typeMessage(page, message, timeout) {
   });
 
   if (!content || content.length < 1) {
-    console.error("Text entry verification failed — textbox is empty");
+    console.error("Text entry verification failed -- textbox is empty");
     return false;
   }
 
@@ -345,7 +421,7 @@ async function main() {
 
     // Send or dry-run
     if (opts.dryRun) {
-      console.error("DRY RUN — message typed but not sent");
+      console.error("DRY RUN -- message typed but not sent");
       console.log(
         JSON.stringify({
           success: true,

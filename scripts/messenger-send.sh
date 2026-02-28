@@ -27,6 +27,7 @@ NAME="${1:?Usage: messenger-send.sh <name> <message> [--cdp|--chrome]}"
 MESSAGE="${2:?Usage: messenger-send.sh <name> <message> [--cdp|--chrome]}"
 MODE="matrix"
 THREAD_ID=""
+E2EE=""
 DRY_RUN=""
 shift 2
 while [[ $# -gt 0 ]]; do
@@ -34,6 +35,7 @@ while [[ $# -gt 0 ]]; do
     --cdp) MODE="cdp" ;;
     --chrome) MODE="chrome" ;;
     --thread) THREAD_ID="${2:?--thread requires a value}"; shift ;;
+    --e2ee) E2EE="--e2ee" ;;
     --dry-run) DRY_RUN="--dry-run" ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
@@ -90,6 +92,9 @@ elif [ "$MODE" = "cdp" ]; then
   CDP_ARGS=(--to "$NAME" --message "$MESSAGE")
   if [ -n "$THREAD_ID" ]; then
     CDP_ARGS=(--thread "$THREAD_ID" --message "$MESSAGE")
+    if [ -n "$E2EE" ]; then
+      CDP_ARGS+=("--e2ee")
+    fi
   fi
   if [ -n "$DRY_RUN" ]; then
     CDP_ARGS+=("--dry-run")
