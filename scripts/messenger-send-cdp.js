@@ -35,12 +35,22 @@
  *   - Overlays must be force-dismissed before interacting with the textbox
  */
 
-const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
 
 const OUTPUT_DIR = path.join(__dirname, "output");
 const DEFAULT_CDP_PORT = 9222;
+
+function getChromium() {
+  try {
+    return require("playwright").chromium;
+  } catch {
+    console.error(
+      "ERROR: playwright is not installed. Run: npm install playwright",
+    );
+    process.exit(1);
+  }
+}
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -345,6 +355,7 @@ async function main() {
 
   // Connect via CDP
   console.error("Connecting via CDP...");
+  const chromium = getChromium();
   const browser = await chromium.connectOverCDP(
     `http://127.0.0.1:${opts.port}`,
   );
