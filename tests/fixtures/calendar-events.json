@@ -1,0 +1,34 @@
+{
+  "events": [
+    {
+      "summary": "Team Standup",
+      "start": { "dateTime": "2026-03-02T10:00:00+09:00" },
+      "end": { "dateTime": "2026-03-02T10:30:00+09:00" }
+    },
+    {
+      "summary": "Focus Time",
+      "start": { "dateTime": "2026-03-02T13:00:00+09:00" },
+      "end": { "dateTime": "2026-03-02T14:00:00+09:00" }
+    },
+    {
+      "summary": "Client Meeting",
+      "start": { "dateTime": "2026-03-02T15:00:00+09:00" },
+      "end": { "dateTime": "2026-03-02T16:00:00+09:00" }
+    },
+    {
+      "summary": "Lunch Block",
+      "start": { "dateTime": "2026-03-02T12:00:00+09:00" },
+      "end": { "dateTime": "2026-03-02T13:00:00+09:00" }
+    },
+    {
+      "summary": "🆓 Optional Sync",
+      "start": { "dateTime": "2026-03-03T11:00:00+09:00" },
+      "end": { "dateTime": "2026-03-03T11:30:00+09:00" }
+    },
+    {
+      "summary": "All Day Offsite",
+      "start": { "date": "2026-03-04" },
+      "end": { "date": "2026-03-05" }
+    }
+  ]
+}

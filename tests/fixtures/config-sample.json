@@ -1,0 +1,13 @@
+{
+  "triage": {
+    "interval_minutes": 30,
+    "email": {
+      "max_results": 20
+    }
+  },
+  "max_budget_usd": "0.50",
+  "hitl": {
+    "low_risk_auto": true,
+    "approval_timeout_hours": 4
+  }
+}

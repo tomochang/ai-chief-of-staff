@@ -1,0 +1,26 @@
+[
+  {
+    "room_id": 100,
+    "name": "Project Alpha",
+    "type": "group",
+    "unread_num": 3,
+    "mention_num": 1,
+    "last_update_time": 9999999999
+  },
+  {
+    "room_id": 200,
+    "name": "My Memo",
+    "type": "my",
+    "unread_num": 0,
+    "mention_num": 0,
+    "last_update_time": 9999999999
+  },
+  {
+    "room_id": 300,
+    "name": "Old Room",
+    "type": "group",
+    "unread_num": 0,
+    "mention_num": 0,
+    "last_update_time": 1000000000
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "message": {
+    "reactions": [
+      {
+        "name": "white_check_mark",
+        "users": ["U_TEST_USER"],
+        "count": 1
+      }
+    ]
+  }
+}

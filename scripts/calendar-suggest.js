@@ -366,4 +366,12 @@ async function main() {
   }
 }
 
-main().catch(console.error);
+if (require.main === module) {
+  main().catch(console.error);
+}
+
+module.exports = {
+  parseArgs, getDateRange, parseBusyTimes, findFreeSlots,
+  sortSlotsByPreference, formatSlotsForEmail, formatSlotsCompact,
+  formatTime, formatDate, shouldExcludeEvent, toLocalDateString, CONFIG,
+};

@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "message": {
+    "reactions": [
+      {
+        "name": "x",
+        "users": ["U_TEST_USER"],
+        "count": 1
+      }
+    ]
+  }
+}

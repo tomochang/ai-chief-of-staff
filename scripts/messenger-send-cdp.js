@@ -458,4 +458,8 @@ async function main() {
   // Note: Don't close browser — we're sharing the existing Chrome instance
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { parseArgs, dismissOverlays, navigateToThread, typeMessage };
