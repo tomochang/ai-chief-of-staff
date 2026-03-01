@@ -10,6 +10,26 @@ Thanks for your interest in contributing to AI Chief of Staff!
 4. **Test locally** — run the commands with Claude Code to verify behavior
 5. **Submit a PR** with a clear description of what changed and why
 
+## Local Test Setup
+
+### Prerequisites
+
+- Node.js 18+
+- `jq`
+- `bats` (Bash Automated Testing System)
+
+### Commands
+
+```bash
+npm ci
+npm test
+```
+
+This runs:
+
+- JS tests with `vitest` (`tests/js/**/*.test.js`)
+- Bash tests with `bats` (`tests/bash/*.bats`)
+
 ## What to Contribute
 
 - New channel integrations (e.g., Discord, Teams)

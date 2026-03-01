@@ -253,6 +253,26 @@ LINE and Messenger use a **3-layer architecture**: skill rules (classification, 
 
 ## Advanced Setup
 
+## Testing
+
+### Requirements
+
+- Node.js 18+
+- `jq`
+- `bats` (Bash Automated Testing System)
+
+### Run locally
+
+```bash
+npm ci
+npm test
+```
+
+`npm test` runs both suites:
+
+- JS unit tests (`vitest`): `tests/js/**/*.test.js`
+- Bash tests (`bats`): `tests/bash/*.bats`
+
 ### Add Slack
 
 1. Configure the [Slack MCP server](https://github.com/anthropics/claude-code) in Claude Code
