@@ -29,6 +29,9 @@ This runs:
 
 - JS tests with `vitest` (`tests/js/**/*.test.js`)
 - Bash tests with `bats` (`tests/bash/*.bats`)
+- E2E smoke checks (`scripts/e2e-smoke.sh`)
+
+If tests fail, use [`docs/ops-runbook.md`](docs/ops-runbook.md) for recovery steps.
 
 ## What to Contribute
 

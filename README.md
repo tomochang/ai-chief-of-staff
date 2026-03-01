@@ -1,7 +1,7 @@
 # AI Chief of Staff
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/badge/release-v1.1.1-blue)](https://github.com/tomochang/ai-chief-of-staff/releases/tag/v1.1.1)
+[![Release](https://img.shields.io/badge/release-v1.1.2-blue)](https://github.com/tomochang/ai-chief-of-staff/releases/tag/v1.1.2)
 [![Claude Code](https://img.shields.io/badge/Built%20with-Claude%20Code-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
 
 **Turn Claude Code into your personal chief of staff.**
@@ -268,10 +268,13 @@ npm ci
 npm test
 ```
 
-`npm test` runs both suites:
+`npm test` runs all suites:
 
 - JS unit tests (`vitest`): `tests/js/**/*.test.js`
 - Bash tests (`bats`): `tests/bash/*.bats`
+- E2E smoke checks (mocked CLI flow): `scripts/e2e-smoke.sh`
+
+If something fails, follow the operations runbook: [`docs/ops-runbook.md`](docs/ops-runbook.md).
 
 ### Add Slack
 
@@ -625,7 +628,8 @@ ai-chief-of-staff/
 │       ├── com.chief-of-staff.today.plist    # Hourly triage
 │       └── com.chief-of-staff.morning.plist  # Daily briefing
 ├── docs/
-│   └── messenger-e2ee-send-investigation.md  # E2EE send technical investigation
+│   ├── messenger-e2ee-send-investigation.md  # E2EE send technical investigation
+│   └── ops-runbook.md                        # Failure recovery and troubleshooting
 ├── README.md                      # English documentation
 └── README.ja.md                   # Japanese documentation
 ```

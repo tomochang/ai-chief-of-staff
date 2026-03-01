@@ -1,11 +1,12 @@
 {
   "name": "ai-chief-of-staff",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "scripts": {
-    "test": "npm run test:js && npm run test:bash",
+    "test": "npm run test:js && npm run test:bash && npm run test:e2e",
     "test:js": "vitest run",
     "test:bash": "bats tests/bash/*.bats",
+    "test:e2e": "bash scripts/e2e-smoke.sh",
     "test:watch": "vitest"
   },
   "devDependencies": {
