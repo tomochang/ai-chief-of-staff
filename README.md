@@ -7,10 +7,6 @@
 
 **Turn Claude Code into your personal chief of staff.**
 
-## Social Proof
-
-This workflow has been curated in the community-maintained [`everything-claude-code`](https://github.com/affaan-m/everything-claude-code) collection under [`agents/chief-of-staff.md`](https://github.com/affaan-m/everything-claude-code/blob/main/agents/chief-of-staff.md).
-
 > **Before:** Every morning, 45 minutes of context-switching — scan 3 inboxes, check Slack threads, scroll LINE, Messenger, and Chatwork, cross-reference calendar, draft replies, update your todo list. Things fall through the cracks. You forget to follow up. Calendar entries are missing meeting links.
 >
 > **After:** You type `/today`. Five minutes later, everything is triaged, replies are drafted, calendar is updated, and nothing is forgotten — because a hook physically blocks you from moving on until it's done.
@@ -33,6 +29,10 @@ Every morning, you type `/today` in your terminal. That's it:
 The concept is simple. Take six inputs — email, Slack, LINE, Messenger, Chatwork, calendar — and pipe them through **classify → triage → assist → execute → record**. Claude Code's `/command` system becomes the workflow engine. Hooks enforce reliability. Git persists your knowledge.
 
 Almost no code to write — the core system is markdown prompts. Hooks and scripts are lightweight bash/JS glue. **Edit a prompt file and the behavior changes instantly.**
+
+## Social Proof
+
+This workflow has been curated in the community-maintained [`everything-claude-code`](https://github.com/affaan-m/everything-claude-code) collection under [`agents/chief-of-staff.md`](https://github.com/affaan-m/everything-claude-code/blob/main/agents/chief-of-staff.md).
 
 <p align="center">
   <img src="docs/demo.gif" alt="demo of /today command" width="700">
