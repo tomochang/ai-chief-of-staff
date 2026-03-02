@@ -1,10 +1,11 @@
 #!/bin/bash
 # messenger-send.sh — Messenger send + verification + auto status update
-# Usage: messenger-send.sh <recipient name> <message> [--cdp|--chrome]
+# Usage: messenger-send.sh <recipient name> <message> [--cdp|--matrix|--chrome]
 #
 # Modes:
-#   (default)  Matrix bridge
-#   --cdp      CDP + Playwright (recommended for E2EE chats)
+#   (default)  CDP + Playwright (recommended for E2EE chats)
+#   --cdp      Same as default (explicit)
+#   --matrix   Matrix bridge (deprecated for Messenger — use for LINE instead)
 #   --chrome   Chrome AppleScript fallback (legacy, does NOT work with E2EE)
 #
 # CDP mode options:
@@ -23,9 +24,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/core/msg-core.sh"
 
-NAME="${1:?Usage: messenger-send.sh <name> <message> [--cdp|--chrome]}"
-MESSAGE="${2:?Usage: messenger-send.sh <name> <message> [--cdp|--chrome]}"
-MODE="matrix"
+NAME="${1:?Usage: messenger-send.sh <name> <message> [--cdp|--matrix|--chrome]}"
+MESSAGE="${2:?Usage: messenger-send.sh <name> <message> [--cdp|--matrix|--chrome]}"
+MODE="cdp"
 THREAD_ID=""
 E2EE=""
 DRY_RUN=""
@@ -33,6 +34,7 @@ shift 2
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --cdp) MODE="cdp" ;;
+    --matrix) MODE="matrix" ;;
     --chrome) MODE="chrome" ;;
     --thread) THREAD_ID="${2:?--thread requires a value}"; shift ;;
     --e2ee) E2EE="--e2ee" ;;
@@ -52,7 +54,7 @@ echo "📤 Messenger send: $NAME ($MODE mode)"
 echo "=========================================="
 
 if [ "$MODE" = "matrix" ]; then
-  # ==================== Matrix Bridge ====================
+  # ==================== Matrix Bridge (deprecated for Messenger) ====================
 
   # 1. Room search (mautrix-meta rooms only — exclude LINE rooms)
   echo "🔍 Room search: $NAME"

@@ -179,7 +179,7 @@ After you send a reply, a **hook-enforced checklist** ensures nothing falls thro
 | **Email** | `gog gmail search` (or any Gmail CLI) | `gog gmail send` | Auto-archive |
 | **Slack** | Slack MCP server | Slack MCP `conversations_add_message` | — |
 | **LINE** | Matrix bridge (mautrix-line) or custom sync script | Matrix bridge or custom send script | `private/drafts/line-replies-YYYY-MM-DD.md` |
-| **Messenger** | Chrome CDP (Playwright) | Chrome CDP + `keyboard.type()` (Playwright) | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
+| **Messenger** | Chrome CDP (Playwright) via `messenger-check-cdp.js` | Chrome CDP + `keyboard.type()` (Playwright) via `messenger-send-cdp.js` | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
 | **Chatwork** | `chatwork-fetch.sh` (curl + jq) | Chatwork REST API (curl) | — |
 
 LINE and Messenger use a **3-layer architecture**: skill rules (classification, tone) → scripts (context collection, sending, validation) → data files (triage status, relationship notes, send logs).
@@ -265,6 +265,7 @@ LINE and Messenger use a **3-layer architecture**: skill rules (classification, 
 
 ```bash
 npm ci
+npm run setup:hooks   # one-time: enable git pre-push test gate
 npm test
 ```
 
@@ -275,6 +276,19 @@ npm test
 - E2E smoke checks (mocked CLI flow): `scripts/e2e-smoke.sh`
 
 If something fails, follow the operations runbook: [`docs/ops-runbook.md`](docs/ops-runbook.md).
+
+After `npm run setup:hooks`, every `git push` automatically runs `npm test`.
+If you need an emergency bypass: `SKIP_TESTS_ON_PUSH=1 git push`.
+
+### E2 evaluation (action_required miss rate)
+
+To validate only `action_required` miss rate (false negatives):
+
+```bash
+node scripts/evaluate-triage.js --file examples/metrics/triage-labeled.sample.jsonl
+```
+
+Protocol and thresholds: [`docs/e2-action-required-eval.md`](docs/e2-action-required-eval.md).
 
 ### Add Slack
 
@@ -308,7 +322,7 @@ cp scripts/messenger-send-cdp.js ~/your-workspace/scripts/
 cd ~/your-workspace/scripts && npm install playwright
 ```
 
-Replace `YOUR_MATRIX_USER_PARTIAL` in the scripts. The recommended send mode is `--cdp` (Chrome CDP + Playwright), which works with E2EE chats. See `docs/messenger-e2ee-send-investigation.md` for technical details and `examples/skills/messenger-skill.md` for the full workflow.
+The default send mode is CDP (Chrome CDP + Playwright), which works with E2EE chats. See `docs/messenger-e2ee-send-investigation.md` for technical details and `examples/skills/messenger-skill.md` for the full workflow.
 
 ### Add Chatwork
 
@@ -468,7 +482,7 @@ To use: copy desired rules to your workspace's `.claude/rules/` directory.
 
 ## LINE & Messenger Scripts
 
-Scripts for LINE and Messenger messaging. LINE uses a Matrix bridge; Messenger uses Chrome CDP/AppleScript.
+Scripts for LINE and Messenger messaging. LINE uses a Matrix bridge; Messenger uses Chrome CDP (Playwright).
 
 ### Prerequisites
 
@@ -478,8 +492,8 @@ Scripts for LINE and Messenger messaging. LINE uses a Matrix bridge; Messenger u
 - Environment variables: `MATRIX_SERVER`, `MATRIX_ADMIN_TOKEN`
 
 **Messenger:**
-- Google Chrome with Messenger logged in (macOS)
-- Node.js + Playwright (for Chrome CDP unread check)
+- Google Chrome with Messenger logged in, launched with `--remote-debugging-port=9222` (macOS)
+- Node.js + Playwright (for Chrome CDP read/send)
 
 ### Scripts
 
@@ -491,8 +505,8 @@ Scripts for LINE and Messenger messaging. LINE uses a Matrix bridge; Messenger u
 | `line-review.sh` | LINE | Validate drafts (emoji, tone, length) |
 | `line-send.sh` | LINE | Send via Matrix + verify delivery |
 | `line-rooms.sh` | LINE | Search rooms via VPS Matrix bridge |
-| `messenger-draft.sh` | Messenger | Collect context via Chrome CDP (Matrix fallback) |
-| `messenger-send.sh` | Messenger | Send via CDP (Playwright) / Matrix / Chrome AppleScript |
+| `messenger-draft.sh` | Messenger | Collect context via Chrome CDP (legacy: Matrix fallback) |
+| `messenger-send.sh` | Messenger | Send via CDP (Playwright, default) / Chrome AppleScript (legacy) |
 | `messenger-send-cdp.js` | Messenger | CDP + keyboard.type() send (E2EE compatible) |
 | `context-lookup.sh` | Shared | Search relationships/todo/calendar by keyword |
 
@@ -569,6 +583,8 @@ gog gmail search "is:unread ..." --account YOUR_OTHER_EMAIL
 
 ```
 ai-chief-of-staff/
+├── .githooks/
+│   └── pre-push                  # Auto-run npm test before push
 ├── commands/
 │   ├── mail.md                    # /mail — Email triage
 │   ├── slack.md                   # /slack — Slack triage
@@ -591,9 +607,11 @@ ai-chief-of-staff/
 │   ├── line-send.sh               # LINE send + verify
 │   ├── line-rooms.sh              # LINE room search
 │   ├── messenger-draft.sh         # Messenger draft context
-│   ├── messenger-send.sh          # Messenger send (CDP/Matrix/AppleScript)
+│   ├── messenger-send.sh          # Messenger send (CDP default / AppleScript legacy)
 │   ├── messenger-send-cdp.js      # CDP + keyboard.type() send (E2EE compatible)
+│   ├── evaluate-triage.js         # E2 action_required recall/miss-rate evaluator
 │   ├── context-lookup.sh          # Search relationships/todo/calendar by keyword
+│   ├── setup-git-hooks.sh         # One-time git hook installer
 │   └── autonomous/
 │       ├── dispatcher.sh          # Entry point for all autonomous modes
 │       ├── today.sh               # 5-channel unified triage
@@ -624,11 +642,14 @@ ai-chief-of-staff/
 │   ├── skills/
 │   │   ├── line-skill.md          # LINE messaging skill
 │   │   └── messenger-skill.md     # Messenger messaging skill
+│   ├── metrics/
+│   │   └── triage-labeled.sample.jsonl # E2 sample labeled dataset
 │   └── launchd/
 │       ├── com.chief-of-staff.today.plist    # Hourly triage
 │       └── com.chief-of-staff.morning.plist  # Daily briefing
 ├── docs/
 │   ├── messenger-e2ee-send-investigation.md  # E2EE send technical investigation
+│   ├── e2-action-required-eval.md             # E2 recall/miss-rate protocol
 │   └── ops-runbook.md                        # Failure recovery and troubleshooting
 ├── README.md                      # English documentation
 └── README.ja.md                   # Japanese documentation

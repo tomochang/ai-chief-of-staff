@@ -174,7 +174,7 @@ claude /schedule-reply "来週の田中さんとのMTGについて返信して"
 | **メール** | `gog gmail search`（Gmail CLI） | `gog gmail send` | 自動アーカイブ |
 | **Slack** | Slack MCPサーバー | Slack MCP `conversations_add_message` | — |
 | **LINE** | Matrixブリッジ（mautrix-line）またはカスタム同期スクリプト | Matrixブリッジまたはカスタム送信スクリプト | `private/drafts/line-replies-YYYY-MM-DD.md` |
-| **Messenger** | Chrome CDP（Playwright） | Chrome AppleScript | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
+| **Messenger** | Chrome CDP（Playwright）via `messenger-check-cdp.js` | Chrome CDP + `keyboard.type()`（Playwright）via `messenger-send-cdp.js` | `private/drafts/messenger-replies-YYYY-MM-DD.md` |
 | **Chatwork** | `chatwork-fetch.sh`（curl + jq） | Chatwork REST API（curl） | — |
 
 LINE・Messengerは**3層アーキテクチャ**: スキルルール（分類、トーン） → スクリプト（コンテキスト収集、送信、検証） → データファイル（トリアージ状態、関係性ノート、送信ログ）。
@@ -272,13 +272,15 @@ cp scripts/line-*.sh ~/your-workspace/scripts/
 
 ### Messengerを追加
 
-Messengerにログイン済みのGoogle Chrome（macOS）が必要。
+Messengerにログイン済みのGoogle Chrome（macOS）とNode.js + Playwrightが必要。
 
 ```bash
 cp scripts/messenger-*.sh ~/your-workspace/scripts/
+cp scripts/messenger-send-cdp.js ~/your-workspace/scripts/
+cd ~/your-workspace/scripts && npm install playwright
 ```
 
-スクリプト内の `YOUR_MATRIX_USER_PARTIAL` を置換。Chrome CDP/AppleScriptワークフローは `examples/skills/messenger-skill.md` を参照。
+デフォルトの送信モードはCDP（Chrome CDP + Playwright）で、E2EEチャットにも対応。技術詳細は `docs/messenger-e2ee-send-investigation.md`、完全なワークフローは `examples/skills/messenger-skill.md` を参照。
 
 ### Chatworkを追加
 
@@ -438,7 +440,7 @@ crontab -e
 
 ## LINE・Messengerスクリプト
 
-LINEはMatrixブリッジ、MessengerはChrome CDP/AppleScript経由のメッセージングスクリプト。
+LINEはMatrixブリッジ、MessengerはChrome CDP（Playwright）経由のメッセージングスクリプト。
 
 ### 前提条件
 
@@ -448,8 +450,8 @@ LINEはMatrixブリッジ、MessengerはChrome CDP/AppleScript経由のメッセ
 - 環境変数: `MATRIX_SERVER`, `MATRIX_ADMIN_TOKEN`
 
 **Messenger:**
-- Messengerにログイン済みのGoogle Chrome（macOS）
-- Node.js + Playwright（Chrome CDPによる未読チェック用）
+- Messengerにログイン済みのGoogle Chrome（`--remote-debugging-port=9222` で起動、macOS）
+- Node.js + Playwright（Chrome CDPによる読み取り・送信用）
 
 ### スクリプト一覧
 
@@ -461,8 +463,8 @@ LINEはMatrixブリッジ、MessengerはChrome CDP/AppleScript経由のメッセ
 | `line-review.sh` | LINE | ドラフト検証（絵文字、トーン、長さ） |
 | `line-send.sh` | LINE | Matrix経由で送信 + 配信確認 |
 | `line-rooms.sh` | LINE | VPS Matrixブリッジ経由のルーム検索 |
-| `messenger-draft.sh` | Messenger | Chrome CDP経由のコンテキスト収集（Matrixフォールバック） |
-| `messenger-send.sh` | Messenger | Chrome AppleScript経由で送信 |
+| `messenger-draft.sh` | Messenger | Chrome CDP経由のコンテキスト収集（レガシー: Matrixフォールバック） |
+| `messenger-send.sh` | Messenger | CDP（Playwright、デフォルト）/ Chrome AppleScript（レガシー）で送信 |
 
 ### スキル
 
@@ -556,7 +558,7 @@ ai-chief-of-staff/
 │   ├── line-send.sh               # LINE送信 + 配信確認
 │   ├── line-rooms.sh              # LINEルーム検索
 │   ├── messenger-draft.sh         # Messengerドラフトコンテキスト
-│   ├── messenger-send.sh          # Messenger送信（Chrome AppleScript）
+│   ├── messenger-send.sh          # Messenger送信（CDPデフォルト / AppleScriptレガシー）
 │   └── autonomous/
 │       ├── dispatcher.sh          # 全自律モードのエントリポイント
 │       ├── today.sh               # 6チャンネル統合トリアージ
@@ -632,7 +634,7 @@ LINE APIはビジネスアカウントが必要です。Matrixブリッジ（[ma
 
 ### なぜMessengerにChrome CDP/AppleScriptを使うのか？
 
-Messengerには個人利用のAPIがありません。ブリッジの代わりに、Chrome CDP（Playwright）で未読メッセージを読み取り、Chrome AppleScriptで送信します。macOS上でMessengerにログイン済みのChromeが必要です。`document.execCommand('insertText')` でReact互換のテキスト入力を行い、`KeyboardEvent('keydown', {key:'Enter'})` で送信をトリガーします。
+Messengerには個人利用のAPIがありません。Chrome CDP（Playwright）で未読メッセージの読み取りと送信の両方を行います。ヘッドレスChromeインスタンスがポート9222で動作し、Playwrightが `connectOverCDP` で接続します。E2EE（エンドツーエンド暗号化）チャットでは、`document.execCommand('insertText')` や Playwright の `fill()` は動作しないため、OS レベルの入力イベントを送る `keyboard.type()` を使用します。技術的な調査の詳細は `docs/messenger-e2ee-send-investigation.md` を参照してください。
 
 ---
 

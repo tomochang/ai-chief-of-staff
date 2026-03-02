@@ -1,9 +1,10 @@
 #!/bin/bash
 # messenger-draft.sh — Messenger draft context collection
-# Usage: messenger-draft.sh <recipient name> [--chrome]
+# Usage: messenger-draft.sh <recipient name> [--matrix|--chrome]
 #
-# Default: Fetch chat history via Matrix bridge
-# --chrome: Chrome AppleScript fallback (when bridge is down)
+# Default: Fetch chat history via Chrome CDP (Playwright)
+# --matrix: Matrix bridge fallback (deprecated for Messenger)
+# --chrome: Chrome AppleScript fallback (legacy)
 #
 # Output: relationships info + chat history + YOUR_NAME's style samples
 # ⚠️ Writing a draft without reading this output is prohibited
@@ -13,9 +14,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/core/msg-core.sh"
 
-NAME="${1:?Usage: messenger-draft.sh <name> [--chrome]}"
-MODE="matrix"
-if [[ "${2:-}" == "--chrome" ]]; then
+NAME="${1:?Usage: messenger-draft.sh <name> [--matrix|--chrome]}"
+MODE="cdp"
+if [[ "${2:-}" == "--matrix" ]]; then
+  MODE="matrix"
+elif [[ "${2:-}" == "--chrome" ]]; then
   MODE="chrome"
 fi
 
@@ -36,13 +39,22 @@ echo ""
 echo "## 2. Chat history (last 20 messages)"
 echo "---"
 
-if [ "$MODE" = "matrix" ]; then
-  # ==================== Matrix Bridge ====================
+if [ "$MODE" = "cdp" ]; then
+  # ==================== Chrome CDP (Playwright) — Default ====================
+  echo "Chrome CDP-based chat history fetch via Playwright"
+  echo ""
+  echo "💡 Use messenger-check-cdp.js to fetch unread messages and chat context."
+  echo "   node scripts/messenger-check-cdp.js"
+  echo ""
+  echo "If CDP is unavailable, try: messenger-draft.sh \"$NAME\" --matrix"
+
+elif [ "$MODE" = "matrix" ]; then
+  # ==================== Matrix Bridge (deprecated for Messenger) ====================
   ROOM_ID=$(msg_search_matrix_room "$NAME" "linebot")
 
   if [ -z "$ROOM_ID" ]; then
     echo "⚠️ Room '$NAME' not found (via Matrix)"
-    echo "💡 Try --chrome option for Chrome-based access"
+    echo "💡 Try default CDP mode instead (no flag needed)"
   else
     echo "Room: $ROOM_ID"
     echo ""
