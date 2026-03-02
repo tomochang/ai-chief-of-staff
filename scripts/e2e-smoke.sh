@@ -41,7 +41,8 @@ calendar_output="$TMP_DIR/calendar.json"
 node "$ROOT_DIR/scripts/calendar-suggest.js" --from 2026-03-02 --to 2026-03-03 --json >"$calendar_output"
 
 jq -e '.slots | length > 0' "$calendar_output" >/dev/null
-jq -e '.compact | test("Mon")' "$calendar_output" >/dev/null
+jq -e '.compact | length > 0' "$calendar_output" >/dev/null
+jq -e '.compact | test("[0-9]+:[0-9]{2}\\+")' "$calendar_output" >/dev/null
 
 lookup_output="$TMP_DIR/context.txt"
 bash "$ROOT_DIR/scripts/context-lookup.sh" "Tanaka" >"$lookup_output"

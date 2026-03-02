@@ -17,8 +17,16 @@ function localDate(year, month, day, hour = 0, min = 0) {
   return new Date(year, month - 1, day, hour, min, 0, 0);
 }
 
-// Monday 2026-03-02 is a known weekday (future date, avoids "today" branch)
-const MON = { year: 2026, month: 3, day: 2 };
+// Pick a Monday at least 7 days in the future to avoid the "today" branch.
+function getFutureMondayBase() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 7);
+  while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+  return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() };
+}
+
+const MON = getFutureMondayBase();
 
 // ============================================================
 // shouldExcludeEvent
@@ -304,8 +312,8 @@ describe("findFreeSlots", () => {
 
   it("multi-day range returns slots for each weekday", () => {
     // Mon-Fri range, no busy times
-    const from = localDate(2026, 3, 2); // Monday
-    const to = localDate(2026, 3, 7); // Saturday (exclusive end)
+    const from = localDate(MON.year, MON.month, MON.day); // Monday
+    const to = localDate(MON.year, MON.month, MON.day + 5); // Saturday (exclusive end)
     const slots = findFreeSlots(from, to, []);
     expect(slots).toHaveLength(5); // Mon-Fri, one full slot each
     for (const s of slots) {
@@ -505,7 +513,8 @@ describe("formatTime", () => {
 
 describe("formatDate", () => {
   it("returns month/day (dayOfWeek) format", () => {
-    // 2026-03-02 is Monday
-    expect(formatDate(localDate(2026, 3, 2))).toBe("3/2 (Mon)");
+    expect(formatDate(localDate(MON.year, MON.month, MON.day))).toBe(
+      `${MON.month}/${MON.day} (Mon)`,
+    );
   });
 });
