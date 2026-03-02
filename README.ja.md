@@ -24,13 +24,13 @@
 
 コードはほぼ書かない。コアはMarkdownのプロンプト。HookとScriptは薄いbash/JSのグルーコードです。**プロンプトファイルを編集するだけで動作が変わります。**
 
-## Social Proof
-
-このワークフローは、コミュニティ管理の[`everything-claude-code`](https://github.com/affaan-m/everything-claude-code)にて、[`agents/chief-of-staff.md`](https://github.com/affaan-m/everything-claude-code/blob/main/agents/chief-of-staff.md)として採用されています。
-
 <p align="center">
   <img src="docs/demo.gif" alt="/today コマンドのデモ" width="700">
 </p>
+
+## Social Proof
+
+このワークフローは、コミュニティ管理の[`everything-claude-code`](https://github.com/affaan-m/everything-claude-code)にて、[`agents/chief-of-staff.md`](https://github.com/affaan-m/everything-claude-code/blob/main/agents/chief-of-staff.md)として採用されています。
 
 ---
 

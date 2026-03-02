@@ -30,13 +30,13 @@ The concept is simple. Take six inputs — email, Slack, LINE, Messenger, Chatwo
 
 Almost no code to write — the core system is markdown prompts. Hooks and scripts are lightweight bash/JS glue. **Edit a prompt file and the behavior changes instantly.**
 
-## Social Proof
-
-This workflow has been curated in the community-maintained [`everything-claude-code`](https://github.com/affaan-m/everything-claude-code) collection under [`agents/chief-of-staff.md`](https://github.com/affaan-m/everything-claude-code/blob/main/agents/chief-of-staff.md).
-
 <p align="center">
   <img src="docs/demo.gif" alt="demo of /today command" width="700">
 </p>
+
+## Social Proof
+
+This workflow has been curated in the community-maintained [`everything-claude-code`](https://github.com/affaan-m/everything-claude-code) collection under [`agents/chief-of-staff.md`](https://github.com/affaan-m/everything-claude-code/blob/main/agents/chief-of-staff.md).
 
 ---
 
