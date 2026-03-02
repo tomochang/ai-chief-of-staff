@@ -3,6 +3,7 @@
 #
 # Replaces post-send.sh with broader coverage:
 #   - Slack messages with scheduling keywords → enforce calendar/todo update
+#   - Messenger (CDP) / LINE sends → enforce calendar/todo update
 #   - Calendar delete → enforce check for related tentative events
 #   - Calendar create/update → enforce showing changes to user with evidence
 #   - Email send → enforce post-send checklist (migrated from post-send.sh)
@@ -27,7 +28,7 @@ case "$TOOL_NAME" in
       cat << 'EOF'
 {
   "decision": "block",
-  "reason": "[Slack scheduling message sent — complete post-send processing NOW]\n\nExecute immediately without confirmation:\n\n1. **Check/update calendar** — If dates were confirmed or tentatively agreed, create/update events\n2. **Update todo.md** — Add to schedule table + pending items\n3. **Update relationships.md** — Add interaction history for the contact\n4. **Commit & push** — `cd YOUR_WORKSPACE && git add -A && git commit -m \"post-slack follow-up\" && git push`\n\nDo not mark task complete until all 4 steps are done."
+  "reason": "[Slack scheduling message sent — complete post-send processing NOW]\n\nExecute immediately without confirmation:\n\n1. **Register tentative calendar events** — Create [tentative] events for ALL proposed/candidate dates\n2. **Invite attendees** — Add all participants as attendees (--add-attendee). Internal members are mandatory\n3. **Update todo.md** — Add to schedule table + pending items\n4. **Update relationships.md** — Add interaction history for the contact\n5. **Commit & push** — `cd YOUR_WORKSPACE && git add -A && git commit -m \"post-slack follow-up\" && git push`\n\nDo not mark task complete until all 5 steps are done."
 }
 EOF
     else
@@ -47,6 +48,15 @@ EOF
 }
 EOF
 
+    elif [[ "$COMMAND" == *"messenger-send-cdp"* ]] || [[ "$COMMAND" == *"messenger-send.sh"* ]] || [[ "$COMMAND" == *"line-sync.sh"* ]]; then
+      # Messenger/LINE send → enforce calendar tentative booking + invite + todo + relationships
+      cat << 'EOF'
+{
+  "decision": "block",
+  "reason": "[Messenger/LINE message sent — complete post-send processing NOW]\n\nExecute immediately without confirmation:\n\n1. **Register tentative calendar events** — If dates were proposed, create [tentative] events for ALL candidate dates\n2. **Invite attendees** — Add all participants as attendees (--add-attendee). Internal members are mandatory\n3. **Update todo.md** — Add to schedule table + pending items\n4. **Update relationships.md** — Add interaction history (create new entry if person not yet tracked)\n5. **Commit & push** — `cd YOUR_WORKSPACE && git add -A && git commit -m \"post-send follow-up\" && git push`\n\nDo not mark task complete until all 5 steps are done. Steps 3-5 are mandatory even if no dates were proposed."
+}
+EOF
+
     elif [[ "$COMMAND" == *"calendar create"* ]] || [[ "$COMMAND" == *"cal create"* ]] || \
          [[ "$COMMAND" == *"calendar update"* ]] || [[ "$COMMAND" == *"cal update"* ]]; then
       # Calendar create/update → show changes to user with evidence
@@ -63,7 +73,7 @@ EOF
         cat << 'EOF'
 {
   "decision": "block",
-  "reason": "[Scheduling email sent — complete post-send processing NOW]\n\nExecute immediately without confirmation:\n\n1. **Register tentative calendar events** — Create [tentative] events for ALL proposed dates\n2. **Update relationships.md** — Add interaction history\n3. **Update todo.md** — Add to schedule table + pending response\n4. **Commit & push** — `cd YOUR_WORKSPACE && git add -A && git commit -m \"schedule follow-up\" && git push`\n\nDo not mark task complete until all 4 steps are done."
+  "reason": "[Scheduling email sent — complete post-send processing NOW]\n\nExecute immediately without confirmation:\n\n1. **Register tentative calendar events** — Create [tentative] events for ALL proposed dates\n2. **Invite attendees** — Add all participants as attendees (--add-attendee). Internal members are mandatory\n3. **Update relationships.md** — Add interaction history\n4. **Update todo.md** — Add to schedule table + pending response\n5. **Commit & push** — `cd YOUR_WORKSPACE && git add -A && git commit -m \"schedule follow-up\" && git push`\n\nDo not mark task complete until all 5 steps are done."
 }
 EOF
       else

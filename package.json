@@ -7,6 +7,8 @@
     "test:js": "vitest run",
     "test:bash": "bats tests/bash/*.bats",
     "test:e2e": "bash scripts/e2e-smoke.sh",
+    "eval:e2": "node scripts/evaluate-triage.js --file examples/metrics/triage-labeled.sample.jsonl",
+    "setup:hooks": "bash scripts/setup-git-hooks.sh",
     "test:watch": "vitest"
   },
   "devDependencies": {

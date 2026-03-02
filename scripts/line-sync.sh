@@ -17,7 +17,7 @@ SELF_SENDERS='["@admin:matrix.local"]'
 SELF_PARTIAL='["YOUR_MATRIX_USER_PARTIAL"]'
 
 # Official accounts (skip targets)
-SKIP_ROOMS='["CHANEL BEAUTY","EDIFICE","Ralph Lauren","LINEマイカード","ニューバランス","SMART GOLF","TIME SHARING","ブラック会員専用コンシェルジュ","BEE8 渋谷","C.STAND","にくだらけ","シーシャと自家製チャイ","Starbucks","お薬なび","BoConcept","Polysection","TRIBE"]'
+SKIP_ROOMS='["CHANEL BEAUTY","EDIFICE","Ralph Lauren","LINEマイカード","ニューバランス","SMART GOLF","TIME SHARING","BEE8 渋谷","C.STAND","にくだらけ","シーシャと自家製チャイ","Starbucks","お薬なび","BoConcept","Polysection","TRIBE"]'
 
 # === Argument parsing ===
 SINCE_HOURS=48

@@ -81,6 +81,53 @@ HOOK_SCRIPT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)/hooks/post-ac
 }
 
 # ---------------------------------------------------------------------------
+# Messenger / LINE send (via Bash tool)
+# ---------------------------------------------------------------------------
+
+@test "messenger-send-cdp.js triggers block with Messenger/LINE reason" {
+  run bash "$HOOK_SCRIPT" <<< '{"tool_name":"Bash","tool_input":{"command":"node scripts/messenger-send-cdp.js --thread 12345 --message \"Let us meet next week\""}}'
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.decision == "block"'
+  echo "$output" | jq -e '.reason' | grep -q "Messenger/LINE"
+}
+
+@test "messenger-send.sh triggers block" {
+  run bash "$HOOK_SCRIPT" <<< '{"tool_name":"Bash","tool_input":{"command":"bash scripts/messenger-send.sh --to user123 --message hello"}}'
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.decision == "block"'
+  echo "$output" | jq -e '.reason' | grep -q "Messenger/LINE"
+}
+
+@test "line-sync.sh triggers block" {
+  run bash "$HOOK_SCRIPT" <<< '{"tool_name":"Bash","tool_input":{"command":"bash scripts/line-sync.sh --room abc --send \"Are you free on Friday?\""}}'
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.decision == "block"'
+  echo "$output" | jq -e '.reason' | grep -q "Messenger/LINE"
+}
+
+# ---------------------------------------------------------------------------
+# Attendee invite enforcement (all channels)
+# ---------------------------------------------------------------------------
+
+@test "Slack scheduling block includes invite step" {
+  run bash "$HOOK_SCRIPT" <<< '{"tool_name":"mcp__slack__conversations_add_message","tool_input":{"channel_id":"C123","payload":"Let me schedule meeting for next Tuesday"}}'
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.reason' | grep -q "Invite attendees"
+}
+
+@test "Email scheduling block includes invite step" {
+  run bash "$HOOK_SCRIPT" <<< '{"tool_name":"Bash","tool_input":{"command":"gog gmail send -a tomo@example.com --to someone@example.com --subject \"Meeting schedule\" --body \"Here are the 候補 dates\""}}'
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.reason' | grep -q "Invite attendees"
+}
+
+@test "Messenger send block includes invite step" {
+  run bash "$HOOK_SCRIPT" <<< '{"tool_name":"Bash","tool_input":{"command":"node scripts/messenger-send-cdp.js --thread 999 --message test"}}'
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.reason' | grep -q "Invite attendees"
+}
+
+# ---------------------------------------------------------------------------
 # Pass-through cases
 # ---------------------------------------------------------------------------
 

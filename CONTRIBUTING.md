@@ -22,6 +22,7 @@ Thanks for your interest in contributing to AI Chief of Staff!
 
 ```bash
 npm ci
+npm run setup:hooks   # one-time: enable git pre-push test gate
 npm test
 ```
 
@@ -32,6 +33,17 @@ This runs:
 - E2E smoke checks (`scripts/e2e-smoke.sh`)
 
 If tests fail, use [`docs/ops-runbook.md`](docs/ops-runbook.md) for recovery steps.
+
+After hook setup, `git push` runs `npm test` automatically and blocks push on failures.
+Emergency bypass is available with `SKIP_TESTS_ON_PUSH=1 git push`.
+
+For triage-quality evaluation focused on `action_required` misses, use:
+
+```bash
+node scripts/evaluate-triage.js --file examples/metrics/triage-labeled.sample.jsonl
+```
+
+See [`docs/e2-action-required-eval.md`](docs/e2-action-required-eval.md) for protocol and acceptance gates.
 
 ## What to Contribute
 

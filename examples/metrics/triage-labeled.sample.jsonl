@@ -1,0 +1,4 @@
+{"id":"m-001","channel":"email","gold":"action_required","pred":"action_required","score":0.92,"text":"Can you confirm tomorrow 14:00?"}
+{"id":"m-002","channel":"slack","gold":"action_required","pred":"info_only","score":0.31,"text":"Need your final approval before launch"}
+{"id":"m-003","channel":"messenger","gold":"info_only","pred":"info_only","score":0.12,"text":"FYI: draft deck uploaded"}
+{"id":"m-004","channel":"line","gold":"info_only","pred":"action_required","score":0.84,"text":"Thanks for the update!"}
