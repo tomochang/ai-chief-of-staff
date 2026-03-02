@@ -2,6 +2,10 @@
 
 **Claude Codeを、あなた専用の参謀に。**
 
+## Social Proof
+
+このワークフローは、コミュニティ管理の[`everything-claude-code`](https://github.com/affaan-m/everything-claude-code)にて、[`agents/chief-of-staff.md`](https://github.com/affaan-m/everything-claude-code/blob/main/agents/chief-of-staff.md)として採用されています。
+
 > **Before:** 毎朝45分のコンテキストスイッチ — 3つの受信トレイを確認、Slackスレッドをチェック、LINE・Messenger・Chatworkをスクロール、カレンダーと突き合わせ、返信を書き、Todoを更新。漏れが出る。フォローアップを忘れる。カレンダーに会議リンクがない。
 >
 > **After:** `/today` と打つ。5分で全チャンネルがトリアージされ、返信案ができ、カレンダーが更新され、何も漏れない — Hookが完了するまで次に進めないから。
