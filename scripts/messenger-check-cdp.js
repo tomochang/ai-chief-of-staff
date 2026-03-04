@@ -37,6 +37,13 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const {
+  deduplicateByThreadId,
+  deduplicateByNamePreview,
+  detectDuplicatePreview,
+  isE2eePlaceholder,
+  classifyChat,
+} = require("./messenger-check-lib");
 
 const OUTPUT_DIR = path.join(__dirname, "output");
 const DEFAULT_CDP_PORT = 9222;
@@ -173,33 +180,19 @@ async function extractChatList(page) {
  * and read the actual decrypted messages.
  */
 async function resolveE2eePreviews(page, allChats) {
-  const E2EE_PLACEHOLDER = /end-to-end encrypted/i;
   const e2eeChats = allChats.filter(
-    (c) => c.unread && E2EE_PLACEHOLDER.test(c.preview),
+    (c) => c.unread && isE2eePlaceholder(c.preview),
   );
 
   if (e2eeChats.length === 0) return;
 
   console.error(`Resolving ${e2eeChats.length} E2EE previews...`);
 
-  // Collect chat URLs from sidebar links
-  const chatLinks = await page.evaluate(() => {
-    const links = {};
-    const rows = document.querySelectorAll(
-      '[role="row"] a[href*="/t/"], [role="listitem"] a[href*="/t/"]',
-    );
-    rows.forEach((a) => {
-      const text =
-        a.closest('[role="row"], [role="listitem"]')?.innerText?.split(
-          "\n",
-        )[0] || "";
-      if (text) links[text] = a.href;
-    });
-    return links;
-  });
+  const resolvedPreviews = new Map();
 
   for (const chat of e2eeChats) {
-    const chatUrl = chatLinks[chat.name];
+    // Use threadUrl directly instead of unreliable name-based chatLinks lookup
+    const chatUrl = chat.threadUrl;
     if (!chatUrl) {
       console.error(`  Skip ${chat.name}: no URL found`);
       continue;
@@ -280,11 +273,35 @@ async function resolveE2eePreviews(page, allChats) {
         return msgs;
       });
 
+        // Verify we navigated to the correct thread
+      const currentUrl = page.url();
+      if (chat.threadId && !currentUrl.includes(`/t/${chat.threadId}`)) {
+        console.error(`  URL mismatch: expected thread ${chat.threadId}, got ${currentUrl}`);
+        chat.e2eeResolved = false;
+        continue;
+      }
+
       if (messages.length > 0) {
         const resolvedPreview = messages
           .slice(-5)
           .join("\n")
           .substring(0, 500);
+
+        // Layer 3: detect duplicate previews across threads
+        const { isDuplicate, existingThreadId } = detectDuplicatePreview(
+          resolvedPreviews,
+          resolvedPreview,
+          chat.threadId,
+        );
+        if (isDuplicate) {
+          console.error(
+            `  Duplicate preview detected: ${chat.name} (thread ${chat.threadId}) matches thread ${existingThreadId}`,
+          );
+          chat.e2eeResolved = false;
+          chat.duplicateOf = existingThreadId;
+          continue;
+        }
+
         chat.preview = resolvedPreview;
         chat.e2eeResolved = true;
         console.error(
@@ -311,11 +328,7 @@ async function resolveE2eePreviews(page, allChats) {
 
 /**
  * Classify chats into actionRequired / review / skip.
- *
- * Classification rules (customize these for your use case):
- *   - skip: already replied (preview starts with "You:"), system messages, parse errors
- *   - action_required: @mentioned, contains question/request keywords
- *   - review: everything else
+ * Uses classifyChat from messenger-check-lib.js.
  */
 function classifyChats(allChats) {
   const unreadChats = allChats.filter((c) => c.unread);
@@ -324,36 +337,8 @@ function classifyChats(allChats) {
   const chatsToClassify =
     unreadChats.length > 0 ? unreadChats : allChats.slice(0, 30);
 
-  const classified = chatsToClassify.map((chat) => {
-    const name = chat.name || "";
-    const preview = chat.preview || "";
-
-    const skipReasons = [];
-    if (preview.startsWith("You:")) skipReasons.push("already_replied");
-    if (
-      /added|removed|named the group|created this group|deleted a message/.test(
-        preview,
-      )
-    )
-      skipReasons.push("system_message");
-    if (name === "Active now") skipReasons.push("parse_error");
-
-    const actionReasons = [];
-    // Customize: add your name patterns for @mention detection
-    // if (/@YourName/.test(preview)) actionReasons.push("mentioned");
-    if (/\?|please|could you|can you|let me know|confirm/.test(preview))
-      actionReasons.push("question_or_request");
-
-    // E2EE chats that couldn't be decrypted → escalate to action_required
-    if (chat.unread && chat.e2eeResolved === false) {
-      actionReasons.push("unreadable_e2ee");
-    }
-
-    let category = "review";
-    if (skipReasons.length > 0 && actionReasons.length === 0)
-      category = "skip";
-    else if (actionReasons.length > 0) category = "action_required";
-
+  return chatsToClassify.map((chat) => {
+    const { category, skipReasons, actionReasons } = classifyChat(chat);
     return {
       ...chat,
       category,
@@ -362,8 +347,6 @@ function classifyChats(allChats) {
       e2eeResolved: chat.e2eeResolved,
     };
   });
-
-  return classified;
 }
 
 async function main() {
@@ -434,14 +417,24 @@ async function main() {
 
     // Extract chat list
     console.error("Extracting chat list...");
-    const allChats = await extractChatList(page);
-    console.error(`Found ${allChats.length} chats total`);
+    const rawChats = await extractChatList(page);
+    console.error(`Found ${rawChats.length} chats total`);
 
-    // Resolve E2EE previews
+    // 3-layer deduplication (Layer 1 & 2 before E2EE resolution)
+    const deduped1 = deduplicateByThreadId(rawChats);
+    const allChats = deduplicateByNamePreview(deduped1);
+    if (rawChats.length !== allChats.length) {
+      console.error(`Dedup: ${rawChats.length} → ${allChats.length}`);
+    }
+
+    // Resolve E2EE previews (includes Layer 3 duplicate detection)
     await resolveE2eePreviews(page, allChats);
 
+    // Filter out duplicates detected during E2EE resolution
+    const cleanChats = allChats.filter((c) => !c.duplicateOf);
+
     // Classify
-    const classified = classifyChats(allChats);
+    const classified = classifyChats(cleanChats);
 
     const actionRequired = classified.filter(
       (c) => c.category === "action_required",
@@ -453,8 +446,8 @@ async function main() {
       timestamp: new Date().toISOString(),
       url: page.url(),
       summary: {
-        total: allChats.length,
-        unread: allChats.filter((c) => c.unread).length,
+        total: cleanChats.length,
+        unread: cleanChats.filter((c) => c.unread).length,
         actionRequired: actionRequired.length,
         review: review.length,
         skip: skip.length,
