@@ -46,10 +46,18 @@ function getDayOfWeek(dateStr) {
 
 /**
  * Format a time string from an ISO datetime.
- * @param {string} dateTime - ISO datetime string
+ * Extracts the local time as specified in the ISO string (e.g. +09:00 offset)
+ * rather than converting to the system's local timezone.
+ * @param {string} dateTime - ISO datetime string (e.g. "2026-03-04T09:00:00+09:00")
  * @returns {string} "HH:MM"
  */
 function formatTime(dateTime) {
+  // Extract HH:MM directly from the ISO string to preserve the original timezone
+  const match = dateTime.match(/T(\d{2}):(\d{2})/);
+  if (match) {
+    return `${match[1]}:${match[2]}`;
+  }
+  // Fallback: use Date parsing (system-local)
   const d = new Date(dateTime);
   const h = String(d.getHours()).padStart(2, "0");
   const m = String(d.getMinutes()).padStart(2, "0");
