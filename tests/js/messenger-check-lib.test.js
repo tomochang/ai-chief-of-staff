@@ -170,17 +170,17 @@ describe("detectDuplicatePreview", () => {
     expect(result.isDuplicate).toBe(false);
   });
 
-  // 実際のバグ再現: E2EE解決時に同一プレビューが別スレッドに割り当てられる
+  // バグ再現: E2EE解決時に同一プレビューが別スレッドに割り当てられる
   it("バグ再現: 同一メッセージが異なるスレッドに解決される", () => {
     const map = new Map();
-    const mfsMessage = "おはようございます。少しお聞きしたいのですが、先日の件について確認させてください...";
+    const sharedMessage = "おはようございます。少しお聞きしたいのですが、先日の件について確認させてください...";
 
     // スレッドAで最初に解決
-    const first = detectDuplicatePreview(map, mfsMessage, "100000000000001");
+    const first = detectDuplicatePreview(map, sharedMessage, "100000000000001");
     expect(first.isDuplicate).toBe(false);
 
     // スレッドBで同じメッセージが解決されようとする → 重複検出
-    const second = detectDuplicatePreview(map, mfsMessage, "200000000000002");
+    const second = detectDuplicatePreview(map, sharedMessage, "200000000000002");
     expect(second.isDuplicate).toBe(true);
     expect(second.existingThreadId).toBe("100000000000001");
   });
