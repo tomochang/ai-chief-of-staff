@@ -22,6 +22,15 @@ mkdir -p "$PENDING_DIR"
 APPROVAL_TIMEOUT_H=$(config_get "hitl.approval_timeout_hours" "4")
 REMINDER_TIMEOUT_H=$(config_get "hitl.reminder_timeout_hours" "8")
 
+APPROVAL_JS="$SCRIPT_DIR/../../../scripts/approval.js"
+
+# Record approval event to JSONL audit log
+_record_approval() {
+  local id="$1" action="$2"
+  shift 2
+  node "$APPROVAL_JS" record "$id" "$action" "$@" 2>/dev/null || true
+}
+
 # --- Send approval request ---
 # Returns: message timestamp (ts) for tracking
 send_approval_request() {
@@ -84,6 +93,7 @@ record = {
 with open('$record_file', 'w') as f:
     json.dump(record, f, ensure_ascii=False, indent=2)
 "
+    _record_approval "$item_id" "pending"
     log_info "Approval request sent: ts=$msg_ts"
     echo "$msg_ts"
   else
@@ -107,10 +117,11 @@ check_pending_approvals() {
     status=$(echo "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('status',''))" 2>/dev/null)
     [ "$status" != "pending" ] && continue
 
-    local msg_ts channel created_at
+    local msg_ts channel created_at item_id
     msg_ts=$(echo "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('ts',''))" 2>/dev/null)
     channel=$(echo "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('channel',''))" 2>/dev/null)
     created_at=$(echo "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('created_at',''))" 2>/dev/null)
+    item_id=$(echo "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('item_id',''))" 2>/dev/null)
 
     # Check for reactions
     local reactions_response
@@ -157,6 +168,7 @@ r['decided_at'] = '$(now_iso)'
 with open('$record_file', 'w') as f:
     json.dump(r, f, ensure_ascii=False, indent=2)
 "
+        _record_approval "$item_id" "send"
         echo "APPROVED:$msg_ts"
         ;;
       rejected)
@@ -170,6 +182,7 @@ r['decided_at'] = '$(now_iso)'
 with open('$record_file', 'w') as f:
     json.dump(r, f, ensure_ascii=False, indent=2)
 "
+        _record_approval "$item_id" "skip"
         echo "REJECTED:$msg_ts"
         ;;
       edit_requested)
@@ -203,6 +216,7 @@ r['edited_reply'] = '''$edited_text'''
 with open('$record_file', 'w') as f:
     json.dump(r, f, ensure_ascii=False, indent=2)
 "
+          _record_approval "$item_id" "edit" --editedText "$edited_text"
           echo "EDITED:$msg_ts"
         else
           echo "EDIT_PENDING:$msg_ts"
@@ -225,6 +239,7 @@ r['decided_at'] = '$(now_iso)'
 with open('$record_file', 'w') as f:
     json.dump(r, f, ensure_ascii=False, indent=2)
 "
+          _record_approval "$item_id" "timed_out"
           echo "TIMED_OUT:$msg_ts"
         elif [ "$age_hours" -ge "$APPROVAL_TIMEOUT_H" ]; then
           # Send reminder

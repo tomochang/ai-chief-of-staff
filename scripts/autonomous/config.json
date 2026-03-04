@@ -39,6 +39,13 @@
     "calendar": {
       "enabled": true
     },
+    "channels_timeout": {
+      "email": 30000,
+      "slack": 15000,
+      "line": 30000,
+      "messenger": 45000,
+      "chatwork": 30000
+    },
     "claude": {
       "max_turns": 15,
       "allowed_tools": "Bash(gog *),Read",

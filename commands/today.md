@@ -50,6 +50,8 @@ Fetch email, Slack, LINE, Messenger, Chatwork, and calendar/todo **in parallel**
 
 ## Step 1: Parallel data fetch
 
+**JS orchestrator:** `scripts/fetch-all.js` provides `fetchAll()` — the canonical JS-layer orchestrator for parallel channel fetch with per-channel timeouts and graceful degradation. Each channel runs independently via `Promise.allSettled`; failures return `{ channel, error, items: [] }` instead of throwing. The bash-layer equivalent is `scripts/autonomous/today.sh`.
+
 **Launch 6 Tasks simultaneously.**
 
 ### Task 1: Email fetch + classify + archive skips

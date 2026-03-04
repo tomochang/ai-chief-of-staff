@@ -423,6 +423,16 @@ All autonomous scripts use `claude -p` (pipe/non-interactive mode) with `--appen
 
 The `lib/approval.sh` module implements a Slack-based approval flow. When the autonomous agent wants to send a message or update your calendar, it posts a preview to Slack and waits for your reaction (checkmark to approve, X to reject). This prevents the agent from acting without your consent.
 
+Every approval decision is recorded to a Git-backed JSONL file (`drafts/approvals.jsonl`) via `scripts/approval.js`. You can query approval history from the CLI:
+
+```bash
+# Check status of a specific message
+node scripts/approval.js status "email:abc123"
+
+# Get aggregate stats (optionally filtered by date range)
+node scripts/approval.js stats --from 2026-03-01 --to 2026-03-31
+```
+
 ---
 
 ## Scheduling (launchd / cron)
@@ -590,6 +600,8 @@ gog gmail search "is:unread ..." --account YOUR_OTHER_EMAIL
 ai-chief-of-staff/
 ├── .githooks/
 │   └── pre-push                  # Auto-run npm test before push
+├── drafts/
+│   └── approvals.jsonl           # Git-backed HITL approval log (auto-generated)
 ├── commands/
 │   ├── mail.md                    # /mail — Email triage
 │   ├── slack.md                   # /slack — Slack triage
@@ -614,6 +626,7 @@ ai-chief-of-staff/
 │   ├── messenger-draft.sh         # Messenger draft context
 │   ├── messenger-send.sh          # Messenger send (CDP default / AppleScript legacy)
 │   ├── messenger-send-cdp.js      # CDP + keyboard.type() send (E2EE compatible)
+│   ├── approval.js                # HITL approval tracking CLI (record/status/stats)
 │   ├── evaluate-triage.js         # E2 action_required recall/miss-rate evaluator
 │   ├── context-lookup.sh          # Search relationships/todo/calendar by keyword
 │   ├── setup-git-hooks.sh         # One-time git hook installer

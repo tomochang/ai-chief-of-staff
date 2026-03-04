@@ -380,6 +380,16 @@ cp examples/rules/*.md ~/your-workspace/.claude/rules/
 
 `lib/approval.sh` がSlackベースの承認フローを実装。自律エージェントがメッセージ送信やカレンダー更新を行う前に、Slackにプレビューを投稿し、あなたのリアクション（チェックマークで承認、Xで拒否）を待ちます。
 
+すべての承認判断はGit管理のJSONLファイル（`drafts/approvals.jsonl`）に `scripts/approval.js` 経由で記録されます。CLIから承認履歴を照会できます:
+
+```bash
+# 特定メッセージのステータスを確認
+node scripts/approval.js status "email:abc123"
+
+# 集計統計（日付範囲フィルター対応）
+node scripts/approval.js stats --from 2026-03-01 --to 2026-03-31
+```
+
 ---
 
 ## スケジューリング（launchd / cron）
@@ -540,6 +550,8 @@ gog gmail search "is:unread ..." --account YOUR_OTHER_EMAIL
 
 ```
 ai-chief-of-staff/
+├── drafts/
+│   └── approvals.jsonl           # Git管理のHITL承認ログ（自動生成）
 ├── commands/
 │   ├── mail.md                    # /mail — メールトリアージ
 │   ├── slack.md                   # /slack — Slackトリアージ
@@ -553,6 +565,7 @@ ai-chief-of-staff/
 │   └── post-send.sh               # PostToolUse送信後強制Hook
 ├── scripts/
 │   ├── calendar-suggest.js        # 空き時間検索スクリプト
+│   ├── approval.js                # HITL承認トラッキングCLI（record/status/stats）
 │   ├── chatwork-fetch.sh          # Chatwork APIフェッチャー（curl + jq）
 │   ├── core/
 │   │   └── msg-core.sh            # 共有Matrixメッセージングユーティリティ
