@@ -239,6 +239,8 @@ Flag items as "same topic" when **any** of these match:
 
 ## Step 2: Generate briefing
 
+**Implementation**: `scripts/format-briefing.js` — `formatBriefing({ messages, calendar, todos, triageQueue, date })` → Markdown string
+
 Combine all Task results (with Step 1.5 dedup applied) into this format:
 
 ```

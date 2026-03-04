@@ -214,7 +214,8 @@ LINE・Messengerは**3層アーキテクチャ**: スキルルール（分類、
                    │
 ┌──────────────────▼──────────────────────────────┐
 │  Scripts (scripts/)                              │
-│  calendar-suggest.js, line-*.sh, messenger-*.sh  │
+│  calendar-suggest.js, format-briefing.js,        │
+│  fetch-all.js, dedup.js, line-*.sh, messenger-*.sh│
 │  core/msg-core.sh（共有メッセージングユーティリティ）│
 │  ↳ 決定的ロジック（LLM不要）                    │
 └──────────────────┬──────────────────────────────┘
@@ -565,6 +566,9 @@ ai-chief-of-staff/
 │   └── post-send.sh               # PostToolUse送信後強制Hook
 ├── scripts/
 │   ├── calendar-suggest.js        # 空き時間検索スクリプト
+│   ├── format-briefing.js          # 決定的ブリーフィングフォーマッター（メッセージ/カレンダー/Todo → Markdown）
+│   ├── fetch-all.js               # 並列チャネルフェッチオーケストレーター（Promise.allSettled）
+│   ├── dedup.js                   # クロスプラットフォームメッセージ重複排除（IDマップ + キーワード/URL照合）
 │   ├── approval.js                # HITL承認トラッキングCLI（record/status/stats）
 │   ├── chatwork-fetch.sh          # Chatwork APIフェッチャー（curl + jq）
 │   ├── core/

@@ -222,7 +222,8 @@ LINE and Messenger use a **3-layer architecture**: skill rules (classification, 
                    │
 ┌──────────────────▼──────────────────────────────┐
 │  Scripts (scripts/)                              │
-│  calendar-suggest.js, fetch-all.js, dedup.js,   │
+│  calendar-suggest.js, format-briefing.js,        │
+│  fetch-all.js, dedup.js,                         │
 │  line-*.sh, messenger-*.sh                       │
 │  core/msg-core.sh (shared messaging utilities)   │
 │  ↳ Deterministic logic (no LLM needed)          │
@@ -629,6 +630,7 @@ ai-chief-of-staff/
 │   ├── messenger-draft.sh         # Messenger draft context
 │   ├── messenger-send.sh          # Messenger send (CDP default / AppleScript legacy)
 │   ├── messenger-send-cdp.js      # CDP + keyboard.type() send (E2EE compatible)
+│   ├── format-briefing.js          # Deterministic briefing formatter (messages/calendar/todos → Markdown)
 │   ├── fetch-all.js               # Parallel channel fetch orchestrator (Promise.allSettled)
 │   ├── dedup.js                   # Cross-platform message deduplication (identity map + keyword/URL matching)
 │   ├── approval.js                # HITL approval tracking CLI (record/status/stats)

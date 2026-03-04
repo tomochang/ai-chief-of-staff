@@ -1,0 +1,251 @@
+{
+  "date": "2026-03-04",
+  "calendar": [
+    {
+      "summary": "Team Standup",
+      "start": { "dateTime": "2026-03-04T09:00:00+09:00" },
+      "end": { "dateTime": "2026-03-04T09:30:00+09:00" },
+      "hangoutLink": "https://meet.google.com/abc-defg-hij"
+    },
+    {
+      "summary": "Client Meeting",
+      "start": { "dateTime": "2026-03-04T14:00:00+09:00" },
+      "end": { "dateTime": "2026-03-04T15:00:00+09:00" },
+      "location": "Office Building 3F",
+      "description": "Q2 planning review"
+    },
+    {
+      "summary": "All Day Offsite",
+      "start": { "date": "2026-03-04" },
+      "end": { "date": "2026-03-05" }
+    },
+    {
+      "summary": "Dinner @Ebisu",
+      "start": { "dateTime": "2026-03-04T19:00:00+09:00" },
+      "end": { "dateTime": "2026-03-04T21:00:00+09:00" },
+      "location": "Restaurant Hiro"
+    }
+  ],
+  "messages": [
+    {
+      "id": "email:skip1",
+      "channel": "email",
+      "from": { "name": "GitHub", "platformId": "noreply@github.com" },
+      "timestamp": "2026-03-04T08:00:00+09:00",
+      "preview": "PR #42 merged",
+      "threadId": "t1",
+      "isUnread": true,
+      "metadata": { "subject": "[GitHub] PR #42 merged" },
+      "tier": "skip",
+      "reasons": ["noreply_sender", "bot_domain"]
+    },
+    {
+      "id": "email:skip2",
+      "channel": "email",
+      "from": { "name": "Vercel", "platformId": "no-reply@vercel.com" },
+      "timestamp": "2026-03-04T07:30:00+09:00",
+      "preview": "Deployment successful",
+      "threadId": "t2",
+      "isUnread": true,
+      "metadata": { "subject": "Deploy successful" },
+      "tier": "skip",
+      "reasons": ["bot_domain"]
+    },
+    {
+      "id": "email:info1",
+      "channel": "email",
+      "from": { "name": "Anthropic", "platformId": "billing@anthropic.com" },
+      "timestamp": "2026-03-04T06:00:00+09:00",
+      "preview": "Your receipt for March",
+      "threadId": "t3",
+      "isUnread": true,
+      "metadata": { "subject": "Receipt #2718" },
+      "tier": "info_only",
+      "reasons": []
+    },
+    {
+      "id": "email:meeting1",
+      "channel": "email",
+      "from": { "name": "Bob", "platformId": "bob@example.com" },
+      "timestamp": "2026-03-04T08:30:00+09:00",
+      "preview": "Join at https://zoom.us/j/123456",
+      "threadId": "t4",
+      "isUnread": true,
+      "metadata": { "subject": "Zoom link for standup" },
+      "tier": "meeting_info",
+      "reasons": ["meeting_link"]
+    },
+    {
+      "id": "email:action1",
+      "channel": "email",
+      "from": { "name": "Jane Smith", "platformId": "jane@example.com" },
+      "timestamp": "2026-03-04T09:00:00+09:00",
+      "preview": "Can you confirm the Q2 timeline kickoff date?",
+      "threadId": "t5",
+      "isUnread": true,
+      "metadata": { "subject": "Q2 timeline" },
+      "tier": "action_required",
+      "reasons": ["question_or_request"]
+    },
+    {
+      "id": "email:action2",
+      "channel": "email",
+      "from": { "name": "Alice Chen", "platformId": "alice@example.com" },
+      "timestamp": "2026-03-04T09:15:00+09:00",
+      "preview": "Needs input on agenda before Friday meeting",
+      "threadId": "t6",
+      "isUnread": true,
+      "metadata": { "subject": "Agenda review" },
+      "tier": "action_required",
+      "reasons": ["question_or_request"],
+      "crossRefs": [
+        { "channel": "slack", "id": "slack:dm_alice", "preview": "Same agenda topic in DM" }
+      ]
+    },
+    {
+      "id": "slack:mention1",
+      "channel": "slack",
+      "from": { "name": "Alice", "platformId": "U001" },
+      "timestamp": "2026-03-04T10:00:00+09:00",
+      "preview": "Deploy review needed",
+      "threadId": "slack_t1",
+      "isUnread": true,
+      "metadata": { "channelName": "product-dev", "isBotMessage": false, "subtype": null },
+      "tier": "action_required",
+      "reasons": ["question_or_request"]
+    },
+    {
+      "id": "slack:mention2",
+      "channel": "slack",
+      "from": { "name": "Bob", "platformId": "U002" },
+      "timestamp": "2026-03-04T10:30:00+09:00",
+      "preview": "Shared planning doc for Q2",
+      "threadId": "slack_t2",
+      "isUnread": true,
+      "metadata": { "channelName": "general", "isBotMessage": false, "subtype": null },
+      "tier": "info_only",
+      "reasons": []
+    },
+    {
+      "id": "slack:dm1",
+      "channel": "slack",
+      "from": { "name": "Charlie", "platformId": "U003" },
+      "timestamp": "2026-03-04T11:00:00+09:00",
+      "preview": "Timeline update? Can you confirm by EOD?",
+      "threadId": "slack_dm1",
+      "isUnread": true,
+      "metadata": { "channelName": "", "isBotMessage": false, "subtype": null },
+      "tier": "action_required",
+      "reasons": ["question_or_request"],
+      "crossRefs": [
+        { "channel": "line", "id": "line:charlie_room", "preview": "Same scheduling thread on LINE" }
+      ]
+    },
+    {
+      "id": "line:skip1",
+      "channel": "line",
+      "from": { "name": "Official Account", "platformId": "official_1" },
+      "timestamp": "2026-03-04T07:00:00+09:00",
+      "preview": "Campaign notification - 50% off today",
+      "threadId": "line_t1",
+      "isUnread": true,
+      "metadata": { "roomType": "dm", "latestSender": "self", "needsReply": false },
+      "tier": "skip",
+      "reasons": ["self_last"]
+    },
+    {
+      "id": "line:info1",
+      "channel": "line",
+      "from": { "name": "Group XX", "platformId": "group_1" },
+      "timestamp": "2026-03-04T08:00:00+09:00",
+      "preview": "Chat about weekend plans",
+      "threadId": "line_t2",
+      "isUnread": true,
+      "metadata": { "roomType": "group", "latestSender": "other", "needsReply": false },
+      "tier": "info_only",
+      "reasons": []
+    },
+    {
+      "id": "line:action1",
+      "channel": "line",
+      "from": { "name": "Taro Tanaka", "platformId": "taro_line" },
+      "timestamp": "2026-03-04T09:00:00+09:00",
+      "preview": "今週末空いてますか？",
+      "threadId": "line_t3",
+      "isUnread": true,
+      "metadata": { "roomType": "dm", "latestSender": "other", "needsReply": true },
+      "tier": "action_required",
+      "reasons": ["needs_reply"]
+    },
+    {
+      "id": "messenger:skip1",
+      "channel": "messenger",
+      "from": { "name": "Page Notification", "platformId": "page_1" },
+      "timestamp": "2026-03-04T06:00:00+09:00",
+      "preview": "You: Thanks for the info",
+      "threadId": "msg_t1",
+      "isUnread": false,
+      "metadata": { "isE2ee": false },
+      "tier": "skip",
+      "reasons": ["already_replied"]
+    },
+    {
+      "id": "messenger:info1",
+      "channel": "messenger",
+      "from": { "name": "Group YY", "platformId": "group_msg_1" },
+      "timestamp": "2026-03-04T08:00:00+09:00",
+      "preview": "Group chat about travel plans",
+      "threadId": "msg_t2",
+      "isUnread": true,
+      "metadata": { "isE2ee": false, "originalCategory": "group" },
+      "tier": "info_only",
+      "reasons": []
+    },
+    {
+      "id": "messenger:action1",
+      "channel": "messenger",
+      "from": { "name": "John Smith", "platformId": "john_msg" },
+      "timestamp": "2026-03-04T10:00:00+09:00",
+      "preview": "Are you free next week? Let me know your schedule please",
+      "threadId": "msg_t3",
+      "isUnread": true,
+      "metadata": { "isE2ee": false },
+      "tier": "action_required",
+      "reasons": ["question_or_request"]
+    },
+    {
+      "id": "chatwork:action1",
+      "channel": "chatwork",
+      "from": { "name": "CustomerName", "platformId": "cw_user1" },
+      "timestamp": "2026-03-04T11:00:00+09:00",
+      "preview": "Could you review the latest proposal?",
+      "threadId": "cw_room1",
+      "isUnread": true,
+      "metadata": { "roomName": "ProjectAlpha", "roomType": "group", "toMe": true },
+      "tier": "action_required",
+      "reasons": ["direct_mention"]
+    },
+    {
+      "id": "chatwork:info1",
+      "channel": "chatwork",
+      "from": { "name": "PersonName", "platformId": "cw_user2" },
+      "timestamp": "2026-03-04T11:30:00+09:00",
+      "preview": "Shared the updated document",
+      "threadId": "cw_room2",
+      "isUnread": true,
+      "metadata": { "roomName": "General", "roomType": "group", "toMe": false },
+      "tier": "info_only",
+      "reasons": []
+    }
+  ],
+  "todos": [
+    { "text": "Prepare for 14:00 client meeting", "done": false },
+    { "text": "Submit expense report", "done": false },
+    { "text": "Review PR #42", "done": true }
+  ],
+  "triageQueue": {
+    "stalePending": 2,
+    "overdueTasks": 1,
+    "todayTasks": 3
+  }
+}
