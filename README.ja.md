@@ -53,7 +53,7 @@ cp commands/mail.md ~/.claude/commands/
 # ワークスペース
 mkdir -p ~/your-workspace/{skills/schedule-reply,hooks,scripts,private}
 cp skills/schedule-reply/SKILL.md ~/your-workspace/skills/schedule-reply/
-cp hooks/post-send.sh ~/your-workspace/hooks/
+cp hooks/post-action-check.sh ~/your-workspace/hooks/
 cp scripts/calendar-suggest.js ~/your-workspace/scripts/
 cp examples/SOUL.md ~/your-workspace/
 ```
@@ -117,7 +117,7 @@ EOF
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/your-workspace/hooks/post-send.sh"
+            "command": "bash ~/your-workspace/hooks/post-action-check.sh"
           }
         ]
       }
@@ -207,7 +207,7 @@ LINE・Messengerは**3層アーキテクチャ**: スキルルール（分類、
 └──────────────────┬──────────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────────┐
-│  Hooks (hooks/post-send.sh)                      │
+│  Hooks (hooks/post-action-check.sh)                      │
 │  ↳ PostToolUse 強制レイヤー                     │
 │  ↳ チェックリスト完了まで処理をブロック         │
 └──────────────────┬──────────────────────────────┘
@@ -563,7 +563,7 @@ ai-chief-of-staff/
 │   └── schedule-reply/
 │       └── SKILL.md               # マルチフェーズ日程調整スキル
 ├── hooks/
-│   └── post-send.sh               # PostToolUse送信後強制Hook
+│   └── post-action-check.sh               # PostToolUse送信後強制Hook
 ├── scripts/
 │   ├── calendar-suggest.js        # 空き時間検索スクリプト
 │   ├── format-briefing.js          # 決定的ブリーフィングフォーマッター（メッセージ/カレンダー/Todo → Markdown）

@@ -171,7 +171,7 @@ describe("normalizeEmail", () => {
     id: "msg_abc123",
     threadId: "thread_abc123",
     headerFrom: "Tanaka Taro <tanaka@example.com>",
-    headerTo: "tomo.mizuno@up-sider.com",
+    headerTo: "user@example.com",
     headerCc: "other@example.com",
     subject: "デプロイの件",
     snippet: "お疲れ様です。デプロイの確認をお願いします。",
@@ -191,7 +191,7 @@ describe("normalizeEmail", () => {
     expect(msg.threadId).toBe("thread_abc123");
     expect(msg.isUnread).toBe(true);
     expect(msg.metadata.subject).toBe("デプロイの件");
-    expect(msg.metadata.headerTo).toBe("tomo.mizuno@up-sider.com");
+    expect(msg.metadata.headerTo).toBe("user@example.com");
     expect(validateMessage(msg)).toEqual([]);
   });
 
