@@ -1,6 +1,6 @@
 {
   "name": "ai-chief-of-staff",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
     "test": "npm run test:js && npm run test:bash && npm run test:e2e",
