@@ -163,6 +163,8 @@ This kit gives Claude Code a **4-tier triage system** for all your communication
 | **meeting_info** | Calendar invites, Zoom/Teams links, location shares | Cross-reference calendar & auto-update |
 | **action_required** | Direct messages, questions, scheduling requests | Generate draft reply |
 
+When messages arrive on multiple channels about the same topic (e.g., someone emails you and messages you on LINE), **cross-platform deduplication** merges them — the higher-priority tier wins, and cross-references link back to the merged duplicates.
+
 After you send a reply, a **hook-enforced checklist** ensures nothing falls through the cracks:
 
 1. Update calendar (create tentative events for proposed dates)
@@ -220,7 +222,7 @@ LINE and Messenger use a **3-layer architecture**: skill rules (classification, 
                    │
 ┌──────────────────▼──────────────────────────────┐
 │  Scripts (scripts/)                              │
-│  calendar-suggest.js, fetch-all.js,              │
+│  calendar-suggest.js, fetch-all.js, dedup.js,   │
 │  line-*.sh, messenger-*.sh                       │
 │  core/msg-core.sh (shared messaging utilities)   │
 │  ↳ Deterministic logic (no LLM needed)          │
@@ -628,6 +630,7 @@ ai-chief-of-staff/
 │   ├── messenger-send.sh          # Messenger send (CDP default / AppleScript legacy)
 │   ├── messenger-send-cdp.js      # CDP + keyboard.type() send (E2EE compatible)
 │   ├── fetch-all.js               # Parallel channel fetch orchestrator (Promise.allSettled)
+│   ├── dedup.js                   # Cross-platform message deduplication (identity map + keyword/URL matching)
 │   ├── approval.js                # HITL approval tracking CLI (record/status/stats)
 │   ├── evaluate-triage.js         # E2 action_required recall/miss-rate evaluator
 │   ├── context-lookup.sh          # Search relationships/todo/calendar by keyword
