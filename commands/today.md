@@ -183,33 +183,43 @@ Classify using the "Chatwork Classification Rules" section below.
 
 After all Tasks return, **before** generating the briefing, detect and merge duplicate topics that span multiple platforms.
 
+**Implementation**: `scripts/dedup.js` — deterministic dedup logic with full test coverage (`tests/js/dedup.test.js`).
+
+```javascript
+const { buildIdentityMap, deduplicateMessages } = require("./scripts/dedup");
+
+// 1. Build identity map from relationships.md
+const identityMap = buildIdentityMap(relationshipsMd);
+
+// 2. Deduplicate post-classification messages
+const deduped = deduplicateMessages(classifiedMessages, identityMap);
+```
+
 ### Detection rules
 
 Flag items as "same topic" when **any** of these match:
 
-| Signal | Example |
-|--------|---------|
-| **Same person × same keywords** | Slack DM @alice "deploy review" + email alice@... "Re: Deploy review" |
-| **Cross-posted link** | Email contains a Slack permalink, or Slack message quotes an email |
-| **Same meeting reference** | Email with Zoom link + Slack "see you at standup" + calendar event |
-| **Forward / CC expansion** | Email CC'd to team → same content pasted in Slack channel |
+| Signal | Implementation |
+|--------|----------------|
+| **Same person × same keywords** | `buildIdentityMap` resolves person across platforms; `extractKeywords` + `keywordOverlap` (≥50% Jaccard) detects topic match |
+| **Cross-posted link** | `extractUrls` finds shared URLs in preview text |
+| **Same meeting reference** | Covered by URL/keyword overlap on meeting links |
+| **Forward / CC expansion** | Covered by same-person + keyword overlap detection |
 
-**Identity matching**: Use `private/relationships.md` (or equivalent contact file) to resolve the same person across platforms (e.g. Slack @alice = email alice@corp.com = LINE Alice).
+**Identity matching**: `buildIdentityMap(relationshipsMd)` parses `private/relationships.md` to build person→{email, slackId, lineId, ...} map with reverse lookup by platformId. Falls back to `from.name` exact match for unknown contacts.
 
 ### Merge rules
 
-1. **Pick a primary platform** — where the main conversation lives (where you should reply)
-   - The platform with a direct question/request → primary
-   - If both have questions → the earlier one
-   - If one is notification-only (CC, forward) → the other is primary
+1. **Pick a primary platform** — highest tier wins; if tie, earlier timestamp wins
+   - `action_required` > `meeting_info` > `info_only` (skip messages excluded from dedup)
+   - Platform with direct question/request gets higher tier from classifier → becomes primary
 
-2. **Promote classification** — use the highest tier across platforms
+2. **Promote classification** — use the highest tier across the merged cluster
    ```
    action_required > meeting_info > info_only > skip
    ```
-   Example: email info_only + Slack action_required → action_required (reply via Slack)
 
-3. **Cross-reference in briefing** — show merged items under the primary platform with a link to the secondary
+3. **Cross-reference in output** — merged entries gain `crossRefs: [{channel, id, preview}]`
    ```
    #### 1. Alice Chen - Deploy review
    **Slack DM** @alice: Requesting approval for production deploy
@@ -220,9 +230,10 @@ Flag items as "same topic" when **any** of these match:
 
 ### Skip dedup for
 
-- skip × skip pairs — both get archived, no detection needed
-- Same person but clearly different topics
-- Messages more than 24 hours apart — treat as separate
+- skip × skip pairs — excluded from dedup candidates entirely
+- Same person but clearly different topics (keyword overlap < 50%)
+- Messages more than 24 hours apart — `withinTimeWindow` rejects
+- Previews with fewer than 3 keywords — guard against false positives
 
 ---
 

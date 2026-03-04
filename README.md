@@ -220,7 +220,8 @@ LINE and Messenger use a **3-layer architecture**: skill rules (classification, 
                    │
 ┌──────────────────▼──────────────────────────────┐
 │  Scripts (scripts/)                              │
-│  calendar-suggest.js, line-*.sh, messenger-*.sh  │
+│  calendar-suggest.js, fetch-all.js,              │
+│  line-*.sh, messenger-*.sh                       │
 │  core/msg-core.sh (shared messaging utilities)   │
 │  ↳ Deterministic logic (no LLM needed)          │
 └──────────────────┬──────────────────────────────┘
@@ -412,7 +413,7 @@ The `scripts/autonomous/` directory enables **unattended operation** — Claude 
 ### How it works
 
 1. **`dispatcher.sh`** is the entry point. It accepts a mode (`triage`, `morning`, `bridge`, `today`) and launches the corresponding handler
-2. **`today.sh`** fetches all 6 channels in parallel (email, Slack, LINE, Messenger, Chatwork, calendar), pipes each through AI classification using channel-specific prompts, and posts a summary to your Slack DM
+2. **`today.sh`** fetches all 6 channels in parallel (email, Slack, LINE, Messenger, Chatwork, calendar), pipes each through AI classification using channel-specific prompts, and posts a summary to your Slack DM. The JS-layer equivalent is **`scripts/fetch-all.js`**, a `Promise.allSettled`-based orchestrator with per-channel timeouts and graceful degradation (failed channels return empty results instead of crashing the briefing)
 3. **`morning-briefing.sh`** generates a morning briefing combining calendar, todos, overnight triage results, and pending approvals
 4. **`slack-bridge.sh`** polls your Slack DMs and routes messages to `claude -p`, creating a bidirectional Claude ↔ Slack interface
 5. **`notify.sh`** sends formatted notifications to your Slack DM
@@ -626,6 +627,7 @@ ai-chief-of-staff/
 │   ├── messenger-draft.sh         # Messenger draft context
 │   ├── messenger-send.sh          # Messenger send (CDP default / AppleScript legacy)
 │   ├── messenger-send-cdp.js      # CDP + keyboard.type() send (E2EE compatible)
+│   ├── fetch-all.js               # Parallel channel fetch orchestrator (Promise.allSettled)
 │   ├── approval.js                # HITL approval tracking CLI (record/status/stats)
 │   ├── evaluate-triage.js         # E2 action_required recall/miss-rate evaluator
 │   ├── context-lookup.sh          # Search relationships/todo/calendar by keyword
@@ -636,7 +638,7 @@ ai-chief-of-staff/
 │       ├── morning-briefing.sh    # Morning briefing generator
 │       ├── slack-bridge.sh        # Bidirectional Slack ↔ Claude bridge
 │       ├── notify.sh              # Slack DM notification sender
-│       ├── config.json            # Configuration for autonomous modes
+│       ├── config.json            # Configuration for autonomous modes (incl. per-channel timeouts)
 │       ├── lib/
 │       │   ├── common.sh          # Shared utilities (logging, locking)
 │       │   ├── slack-api.sh       # Slack Web API wrapper
