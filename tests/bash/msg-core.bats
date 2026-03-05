@@ -168,7 +168,7 @@ teardown() {
 
 @test "msg_load_voice_examples — graceful when file missing" {
   export MSG_VOICE_EXAMPLES="/nonexistent/voice-examples.md"
-  run msg_load_voice_examples "casual-female"
+  run msg_load_voice_examples "partner"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -231,8 +231,8 @@ teardown() {
 @test "msg_rotate_examples — no-op when <= 5 examples" {
   local tmpfile="$TEST_TMPDIR/rotate-test.md"
   cp "$FIXTURES_DIR/voice-examples-sample.md" "$tmpfile"
-  run msg_rotate_examples "casual-female" "$tmpfile"
+  run msg_rotate_examples "partner" "$tmpfile"
   [ "$status" -eq 0 ]
-  # File should be unchanged (only 2 casual-female examples)
+  # File should be unchanged (only 2 partner examples)
   diff -q "$tmpfile" "$FIXTURES_DIR/voice-examples-sample.md"
 }

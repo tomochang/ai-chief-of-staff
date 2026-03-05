@@ -476,7 +476,7 @@ if m_texts:
 # =============================================================================
 # 12. Voice examples — load category-filtered examples
 # Usage: msg_load_voice_examples <category>
-# category: casual-female, casual-male, business, business-casual
+# category: partner, casual, business-casual, business
 # =============================================================================
 msg_load_voice_examples() {
     local category="$1"
