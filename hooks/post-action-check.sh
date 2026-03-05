@@ -49,11 +49,11 @@ EOF
 EOF
 
     elif [[ "$COMMAND" == *"messenger-send-cdp"* ]] || [[ "$COMMAND" == *"messenger-send.sh"* ]] || [[ "$COMMAND" == *"line-sync.sh"* ]]; then
-      # Messenger/LINE send → enforce calendar tentative booking + invite + todo + relationships
+      # Messenger/LINE send → enforce calendar tentative booking + invite + todo + relationships + voice correction
       cat << 'EOF'
 {
   "decision": "block",
-  "reason": "[Messenger/LINE message sent — complete post-send processing NOW]\n\nExecute immediately without confirmation:\n\n1. **Register tentative calendar events** — If dates were proposed, create [tentative] events for ALL candidate dates\n2. **Invite attendees** — Add all participants as attendees (--add-attendee). Internal members are mandatory\n3. **Update todo.md** — Add to schedule table + pending items\n4. **Update relationships.md** — Add interaction history (create new entry if person not yet tracked)\n5. **Commit & push** — `cd YOUR_WORKSPACE && git add -A && git commit -m \"post-send follow-up\" && git push`\n\nDo not mark task complete until all 5 steps are done. Steps 3-5 are mandatory even if no dates were proposed."
+  "reason": "[Messenger/LINE message sent — complete post-send processing NOW]\n\nExecute immediately without confirmation:\n\n1. **Register tentative calendar events** — If dates were proposed, create [tentative] events for ALL candidate dates\n2. **Invite attendees** — Add all participants as attendees (--add-attendee). Internal members are mandatory\n3. **Update todo.md** — Add to schedule table + pending items\n4. **Update relationships.md** — Add interaction history (create new entry if person not yet tracked)\n5. **Voice correction check** — Compare latest draft in `private/drafts/` with actual sent message. If different, run `msg_write_correction` to append to `data/voice/examples.md`\n6. **Commit & push** — `cd YOUR_WORKSPACE && git add -A && git commit -m \"post-send follow-up\" && git push`\n\nDo not mark task complete until all 6 steps are done. Steps 3-6 are mandatory even if no dates were proposed."
 }
 EOF
 

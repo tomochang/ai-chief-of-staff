@@ -137,3 +137,102 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"(none)"* ]]
 }
+
+# ===========================================================================
+# msg_load_voice_examples
+# ===========================================================================
+
+@test "msg_load_voice_examples — loads matching category" {
+  export MSG_VOICE_EXAMPLES="$FIXTURES_DIR/voice-examples-sample.md"
+  run msg_load_voice_examples "casual-female"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Voice Examples"* ]]
+  [[ "$output" == *"テスト例1"* ]]
+  [[ "$output" == *"テスト例3"* ]]
+}
+
+@test "msg_load_voice_examples — excludes non-matching category" {
+  export MSG_VOICE_EXAMPLES="$FIXTURES_DIR/voice-examples-sample.md"
+  run msg_load_voice_examples "casual-female"
+  [ "$status" -eq 0 ]
+  # business-casual example should NOT appear
+  [[ "$output" != *"テスト例2"* ]]
+}
+
+@test "msg_load_voice_examples — returns empty for unknown category" {
+  export MSG_VOICE_EXAMPLES="$FIXTURES_DIR/voice-examples-sample.md"
+  run msg_load_voice_examples "nonexistent-category"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "msg_load_voice_examples — graceful when file missing" {
+  export MSG_VOICE_EXAMPLES="/nonexistent/voice-examples.md"
+  run msg_load_voice_examples "casual-female"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+# ===========================================================================
+# msg_detect_voice_category
+# ===========================================================================
+
+@test "msg_detect_voice_category — detects casual-female for girlfriend" {
+  run msg_detect_voice_category "関係: 交際中の彼女"
+  [ "$status" -eq 0 ]
+  [ "$output" = "casual-female" ]
+}
+
+@test "msg_detect_voice_category — detects business for client" {
+  run msg_detect_voice_category "関係: 取引先の担当者"
+  [ "$status" -eq 0 ]
+  [ "$output" = "business" ]
+}
+
+@test "msg_detect_voice_category — defaults to business-casual" {
+  run msg_detect_voice_category "関係: 知人"
+  [ "$status" -eq 0 ]
+  [ "$output" = "business-casual" ]
+}
+
+# ===========================================================================
+# msg_validate_draft
+# ===========================================================================
+
+@test "msg_validate_draft — passes good draft" {
+  run msg_validate_draft "行きましょう。水木どっちか空いてます" "来週飲みに行きませんか？" 100
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "msg_validate_draft — detects empathy-parrot pattern" {
+  run msg_validate_draft "なるほど、いいですね！" "今日カフェ行ったよ" 100
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"共感オウム返し"* ]]
+}
+
+@test "msg_validate_draft — detects question-ending pattern" {
+  run msg_validate_draft "いいね。何食べたの？" "ランチ美味しかった" 100
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"質問終わり"* ]]
+}
+
+@test "msg_validate_draft — detects verbose draft" {
+  local long_draft="これはとても長い返信です。相手のメッセージに対して丁寧に返答しています。しかしながらこのような長い文章は不適切です。もっと簡潔にすべきです。以上。"
+  run msg_validate_draft "$long_draft" "元気？" 20
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"冗長"* ]]
+}
+
+# ===========================================================================
+# msg_rotate_examples
+# ===========================================================================
+
+@test "msg_rotate_examples — no-op when <= 5 examples" {
+  local tmpfile="$TEST_TMPDIR/rotate-test.md"
+  cp "$FIXTURES_DIR/voice-examples-sample.md" "$tmpfile"
+  run msg_rotate_examples "casual-female" "$tmpfile"
+  [ "$status" -eq 0 ]
+  # File should be unchanged (only 2 casual-female examples)
+  diff -q "$tmpfile" "$FIXTURES_DIR/voice-examples-sample.md"
+}

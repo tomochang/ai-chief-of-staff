@@ -18,7 +18,8 @@ echo "=========================================="
 echo ""
 echo "## 1. Relationships info"
 echo "---"
-msg_search_relationships "$NAME"
+REL_OUTPUT=$(msg_search_relationships "$NAME")
+echo "$REL_OUTPUT"
 
 # 2. Search Matrix room and get chat history
 echo ""
@@ -39,7 +40,13 @@ msg_display_matrix_history "$ROOM_ID"
 echo ""
 msg_extract_constraints "$NAME"
 
+# === Voice examples ===
+VOICE_CAT=$(msg_detect_voice_category "$REL_OUTPUT")
+echo ""
+msg_load_voice_examples "$VOICE_CAT"
+
 echo ""
 echo "=========================================="
-echo "Please compose the draft based on the above context"
+echo "Compose draft. After generation, validate with:"
+echo "  msg_validate_draft \"\$DRAFT\" \"\$INCOMING\" \$AVG_LEN"
 echo "=========================================="

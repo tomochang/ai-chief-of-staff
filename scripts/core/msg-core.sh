@@ -19,6 +19,7 @@
 # === Default paths (can be overridden before sourcing) ===
 MSG_REL_FILE="${MSG_REL_FILE:-$WORKSPACE/private/relationships.md}"
 MSG_DRAFT_DIR="${MSG_DRAFT_DIR:-$WORKSPACE/private/drafts}"
+MSG_VOICE_EXAMPLES="${MSG_VOICE_EXAMPLES:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)/data/voice/examples.md}"
 
 # === Common variables ===
 MSG_TODAY="${MSG_TODAY:-$(TZ=Asia/Tokyo date +%Y-%m-%d)}"
@@ -470,4 +471,181 @@ if m_texts:
     print(f'  ✅ Tone: {tone}')
     print(f'  ❌ Do not use expressions that clearly differ from YOUR_NAME'\''s style')
 " 2>/dev/null
+}
+
+# =============================================================================
+# 12. Voice examples — load category-filtered examples
+# Usage: msg_load_voice_examples <category>
+# category: casual-female, casual-male, business, business-casual
+# =============================================================================
+msg_load_voice_examples() {
+    local category="$1"
+    local examples_file="${MSG_VOICE_EXAMPLES}"
+    [ ! -f "$examples_file" ] && return 0
+
+    python3 -c "
+import sys, re
+category = sys.argv[1]
+with open(sys.argv[2], 'r') as f:
+    content = f.read()
+sections = re.split(r'(?=^### )', content, flags=re.MULTILINE)
+matched = [s for s in sections if f'**Category:** {category}' in s]
+if matched:
+    print('## 5. Voice Examples（この対比に従うこと）')
+    print('---')
+    for s in matched[:5]:
+        print(s.strip())
+        print()
+" "$category" "$examples_file" 2>/dev/null
+}
+
+# =============================================================================
+# 13. Voice category detection from relationships text
+# Usage: category=$(msg_detect_voice_category "<relationships_output>")
+# =============================================================================
+msg_detect_voice_category() {
+    local rel_text="$1"
+    if echo "$rel_text" | grep -qi '交際中\|彼女\|彼氏'; then echo "casual-female"
+    elif echo "$rel_text" | grep -qi '友人.*女性\|女性.*友人\|女友達'; then echo "casual-female"
+    elif echo "$rel_text" | grep -qi 'ビジネス.*友人\|友人.*ビジネス'; then echo "business-casual"
+    elif echo "$rel_text" | grep -qi '取引先\|パートナー\|投資家\|銀行'; then echo "business"
+    else echo "business-casual"
+    fi
+}
+
+# =============================================================================
+# 14. Draft quality validation (no LLM — regex + heuristics)
+# Usage: msg_validate_draft <draft> <incoming> [avg_len]
+# Returns 0 if OK, 1 if NG (prints warnings)
+# =============================================================================
+msg_validate_draft() {
+    local draft="$1"
+    local incoming="$2"
+    local avg_len="${3:-100}"
+    local warnings=""
+
+    # 1. 共感オウム返しパターン
+    if echo "$draft" | head -1 | grep -qiE '^(わかる|なるほど|たしかに|そうだよね|そうですよね)'; then
+        warnings+="⚠️ 共感オウム返し: 冒頭が受容語。自分の視点から始めろ\n"
+    fi
+
+    # 2. 質問で返すパターン（セラピスト）
+    if echo "$draft" | tail -1 | grep -qE '[？?]\s*$'; then
+        warnings+="⚠️ 質問終わり: 相手に負荷を戻している。自分のスタンスで着地しろ\n"
+    fi
+
+    # 3. 冗長（平均の2倍超）
+    local draft_len=${#draft}
+    if [ "$draft_len" -gt $((avg_len * 2)) ]; then
+        warnings+="⚠️ 冗長: 平均${avg_len}字に対して${draft_len}字。既知文脈を省略しろ\n"
+    fi
+
+    # 4. オウム返し検出（incoming のキーフレーズを30%以上含む）
+    local overlap
+    overlap=$(python3 -c "
+import sys
+incoming = sys.argv[1]
+draft = sys.argv[2]
+words_in = set(incoming[i:i+4] for i in range(len(incoming)-3))
+words_dr = set(draft[i:i+4] for i in range(len(draft)-3))
+if not words_in:
+    print(0)
+else:
+    print(f'{len(words_in & words_dr) / len(words_in):.2f}')
+" "$incoming" "$draft" 2>/dev/null)
+    if [ "$(echo "$overlap > 0.30" | bc 2>/dev/null)" = "1" ]; then
+        warnings+="⚠️ オウム返し: 相手の言葉を${overlap}%再利用。自分の言葉で語れ\n"
+    fi
+
+    if [ -n "$warnings" ]; then
+        echo -e "$warnings"
+        return 1
+    fi
+    return 0
+}
+
+# =============================================================================
+# 15. Draft save (for correction capture)
+# Usage: msg_save_draft <channel> <name> <draft_text>
+# =============================================================================
+msg_save_draft() {
+    local channel="$1"
+    local name="$2"
+    local draft_text="$3"
+    local draft_dir="${MSG_DRAFT_DIR}"
+    mkdir -p "$draft_dir"
+    local ts=$(date +%Y%m%d-%H%M%S)
+    echo "$draft_text" > "$draft_dir/${channel}-${name}-${ts}.md"
+}
+
+# =============================================================================
+# 16. Correction auto-write (no LLM — template append)
+# Usage: msg_write_correction <category> <incoming> <ng_draft> <ok_actual>
+# =============================================================================
+msg_write_correction() {
+    local category="$1"
+    local incoming="$2"
+    local ng_draft="$3"
+    local ok_actual="$4"
+    local examples_file="${MSG_VOICE_EXAMPLES}"
+
+    # Why NG をヒューリスティクスで判定
+    local why_ng=""
+    echo "$ng_draft" | head -1 | grep -qiE '^(わかる|なるほど|たしかに)' && why_ng="共感オウム返し"
+    echo "$ng_draft" | tail -1 | grep -qE '[？?]\s*$' && why_ng="${why_ng:+$why_ng + }質問で返している"
+    [ ${#ng_draft} -gt $((${#ok_actual} * 2)) ] && why_ng="${why_ng:+$why_ng + }冗長"
+    [ -z "$why_ng" ] && why_ng="SOUL.md不体現"
+
+    # situation-tag を自動推定
+    local situation="general"
+    echo "$incoming" | grep -qiE '[？?]|教えて|お願い' && situation="request"
+    echo "$incoming" | grep -qiE '日程|いつ|候補' && situation="scheduling"
+    echo "$incoming" | grep -qiE 'ありがとう|感謝|楽しかった' && situation="thanks"
+
+    # 追記
+    cat >> "$examples_file" <<EOF
+
+### [$situation] $(date +%Y-%m-%d)
+
+**Category:** $category
+**Incoming:** 「$incoming」
+
+**NG:** 「$ng_draft」
+**Why NG:** $why_ng
+
+**OK:** 「$ok_actual」
+EOF
+
+    # Cap check: カテゴリ内5例超えたらFIFOで削除
+    msg_rotate_examples "$category" "$examples_file"
+}
+
+# =============================================================================
+# 17. FIFO rotation — keep max 5 examples per category
+# Usage: msg_rotate_examples <category> <examples_file>
+# =============================================================================
+msg_rotate_examples() {
+    local category="$1"
+    local examples_file="$2"
+
+    python3 -c "
+import sys, re
+category = sys.argv[1]
+filepath = sys.argv[2]
+with open(filepath, 'r') as f:
+    content = f.read()
+
+sections = re.split(r'(?=^### )', content, flags=re.MULTILINE)
+cat_sections = [(i, s) for i, s in enumerate(sections) if f'**Category:** {category}' in s]
+
+if len(cat_sections) <= 5:
+    sys.exit(0)
+
+# 古い方（先頭）を削除
+remove_idx = cat_sections[0][0]
+del sections[remove_idx]
+with open(filepath, 'w') as f:
+    f.write(''.join(sections))
+print(f'Rotated: removed oldest {category} example')
+" "$category" "$examples_file" 2>/dev/null
 }

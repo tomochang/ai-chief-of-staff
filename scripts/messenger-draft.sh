@@ -32,7 +32,8 @@ echo "=========================================="
 echo ""
 echo "## 1. Relationships info"
 echo "---"
-msg_search_relationships "$NAME"
+REL_OUTPUT=$(msg_search_relationships "$NAME")
+echo "$REL_OUTPUT"
 
 # 2. Chat history fetch
 echo ""
@@ -107,9 +108,15 @@ for f in "$TRIAGE_DIR/messenger_triage_"*.md "$TRIAGE_DIR/drafts/messenger-repli
   fi
 done
 
+# === Voice examples ===
+VOICE_CAT=$(msg_detect_voice_category "$REL_OUTPUT")
+echo ""
+msg_load_voice_examples "$VOICE_CAT"
+
 echo ""
 echo "=========================================="
-echo "Please compose the draft based on the above context"
+echo "Compose draft. After generation, validate with:"
+echo "  msg_validate_draft \"\$DRAFT\" \"\$INCOMING\" \$AVG_LEN"
 echo ""
 echo "📝 Checklist (review before drafting):"
 echo "  [ ] Does relationships.md have info? (add first if not)"

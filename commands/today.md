@@ -380,7 +380,18 @@ Review today's task list for feasibility:
 - `[Reschedule → YYYY-MM-DD]` — move to new date
 - `[Done]` — already complete
 
-### 3.4 Triage complete
+### 3.4 返信案生成
+
+コンテキストロード順序:
+1. SOUL.md（人格）
+2. relationships.md（相手情報）
+3. チャット履歴 + 文体分析（表面特徴）
+4. `data/voice/examples.md`（会話戦略 — few-shot）
+
+生成後、`msg_validate_draft()` でプログラムチェック。NG検出時は再生成。
+ドラフト保存は `msg_save_draft()` で自動。
+
+### 3.5 Triage complete
 
 ```
 N/N items decided. 0 undecided. M follow-up drafts queued for Step 4.
