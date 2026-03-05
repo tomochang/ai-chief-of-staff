@@ -144,7 +144,7 @@ teardown() {
 
 @test "msg_load_voice_examples — loads matching category" {
   export MSG_VOICE_EXAMPLES="$FIXTURES_DIR/voice-examples-sample.md"
-  run msg_load_voice_examples "casual-female"
+  run msg_load_voice_examples "partner"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Voice Examples"* ]]
   [[ "$output" == *"テスト例1"* ]]
@@ -153,7 +153,7 @@ teardown() {
 
 @test "msg_load_voice_examples — excludes non-matching category" {
   export MSG_VOICE_EXAMPLES="$FIXTURES_DIR/voice-examples-sample.md"
-  run msg_load_voice_examples "casual-female"
+  run msg_load_voice_examples "partner"
   [ "$status" -eq 0 ]
   # business-casual example should NOT appear
   [[ "$output" != *"テスト例2"* ]]
@@ -177,10 +177,10 @@ teardown() {
 # msg_detect_voice_category
 # ===========================================================================
 
-@test "msg_detect_voice_category — detects casual-female for girlfriend" {
+@test "msg_detect_voice_category — detects partner for girlfriend" {
   run msg_detect_voice_category "関係: 交際中の彼女"
   [ "$status" -eq 0 ]
-  [ "$output" = "casual-female" ]
+  [ "$output" = "partner" ]
 }
 
 @test "msg_detect_voice_category — detects business for client" {

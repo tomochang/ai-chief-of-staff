@@ -6,7 +6,7 @@
 
 ### [sharing] テスト例1
 
-**Category:** casual-female
+**Category:** partner
 **Context:** テスト状況
 **Incoming:** 「テストメッセージ」
 
@@ -30,7 +30,7 @@
 
 ### [thanks] テスト例3
 
-**Category:** casual-female
+**Category:** partner
 **Context:** テスト状況3
 **Incoming:** 「ありがとう」
 

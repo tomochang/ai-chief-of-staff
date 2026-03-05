@@ -7,7 +7,7 @@ NG/OK の対比で「SOUL.mdを体現した返し」を学習する。
 
 ### [sharing] 日常の共有への返し
 
-**Category:** casual-female
+**Category:** partner
 **Context:** 彼女がカフェで撮った写真を送ってきた
 **Incoming:** 「今日のカフェ☕️ めっちゃ良かった〜」
 

@@ -502,13 +502,14 @@ if matched:
 # =============================================================================
 # 13. Voice category detection from relationships text
 # Usage: category=$(msg_detect_voice_category "<relationships_output>")
+# Categories: partner, casual, business-casual, business
 # =============================================================================
 msg_detect_voice_category() {
     local rel_text="$1"
-    if echo "$rel_text" | grep -qi '交際中\|彼女\|彼氏'; then echo "casual-female"
-    elif echo "$rel_text" | grep -qi '友人.*女性\|女性.*友人\|女友達'; then echo "casual-female"
+    if echo "$rel_text" | grep -qi '交際中\|彼女\|彼氏'; then echo "partner"
     elif echo "$rel_text" | grep -qi 'ビジネス.*友人\|友人.*ビジネス'; then echo "business-casual"
     elif echo "$rel_text" | grep -qi '取引先\|パートナー\|投資家\|銀行'; then echo "business"
+    elif echo "$rel_text" | grep -qi '友人\|友達'; then echo "casual"
     else echo "business-casual"
     fi
 }
