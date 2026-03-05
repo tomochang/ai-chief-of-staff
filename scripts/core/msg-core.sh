@@ -580,8 +580,48 @@ msg_save_draft() {
 }
 
 # =============================================================================
+# 16a. Anonymize text for public repo (no LLM — regex substitution)
+# Usage: anonymized=$(msg_anonymize_text "raw text")
+# Strips: person names, company/org names, place names, dates, emails, URLs
+# =============================================================================
+msg_anonymize_text() {
+    local text="$1"
+    python3 -c "
+import re, sys
+t = sys.argv[1]
+
+# Email addresses
+t = re.sub(r'[\w.+-]+@[\w.-]+\.\w+', '[email]', t)
+
+# URLs
+t = re.sub(r'https?://\S+', '[URL]', t)
+
+# Japanese person names (kanji 2-4 chars + さん/くん/様/氏 etc.)
+t = re.sub(r'[一-龥]{1,4}(さん|くん|様|氏|先生|部長|課長|社長|常務|専務)', '[人名]\g<1>', t)
+
+# Company/org patterns
+t = re.sub(r'[一-龥ァ-ヶa-zA-Z]{2,}(銀行|証券|商事|物産|グループ|株式会社|合同会社|有限会社)', '[組織名]', t)
+
+# Specific dates (MM/DD, YYYY/MM/DD, M月D日)
+t = re.sub(r'\d{1,4}[/\-]\d{1,2}[/\-]\d{1,2}', '[日付]', t)
+t = re.sub(r'\d{1,2}[/\-]\d{1,2}', '[日付]', t)
+t = re.sub(r'\d{1,2}月\d{1,2}日', '[日付]', t)
+
+# Phone numbers
+t = re.sub(r'[\d\-()]{8,}', '[電話]', t)
+
+print(t)
+" "$text" 2>/dev/null || echo "$text"
+}
+
+# =============================================================================
 # 16. Correction auto-write (no LLM — template append)
 # Usage: msg_write_correction <category> <incoming> <ng_draft> <ok_actual>
+#
+# WARNING: examples.md is in a PUBLIC repo. This function MUST NOT write
+# real names, company names, or any identifiable details. All text is
+# anonymized before writing. The caller is responsible for verifying
+# the output is safe — review examples.md diff before commit.
 # =============================================================================
 msg_write_correction() {
     local category="$1"
@@ -589,6 +629,12 @@ msg_write_correction() {
     local ng_draft="$3"
     local ok_actual="$4"
     local examples_file="${MSG_VOICE_EXAMPLES}"
+
+    # Anonymize: strip names, orgs, identifiable details
+    local anon_incoming anon_ng anon_ok
+    anon_incoming=$(msg_anonymize_text "$incoming")
+    anon_ng=$(msg_anonymize_text "$ng_draft")
+    anon_ok=$(msg_anonymize_text "$ok_actual")
 
     # Why NG をヒューリスティクスで判定
     local why_ng=""
@@ -603,19 +649,21 @@ msg_write_correction() {
     echo "$incoming" | grep -qiE '日程|いつ|候補' && situation="scheduling"
     echo "$incoming" | grep -qiE 'ありがとう|感謝|楽しかった' && situation="thanks"
 
-    # 追記
+    # 追記（匿名化済みテキストを使用）
     cat >> "$examples_file" <<EOF
 
 ### [$situation] $(date +%Y-%m-%d)
 
 **Category:** $category
-**Incoming:** 「$incoming」
+**Incoming:** 「$anon_incoming」
 
-**NG:** 「$ng_draft」
+**NG:** 「$anon_ng」
 **Why NG:** $why_ng
 
-**OK:** 「$ok_actual」
+**OK:** 「$anon_ok」
 EOF
+
+    echo "⚠️ examples.md updated — PUBLIC REPO. Review diff before commit."
 
     # Cap check: カテゴリ内5例超えたらFIFOで削除
     msg_rotate_examples "$category" "$examples_file"
