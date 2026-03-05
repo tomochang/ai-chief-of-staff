@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# PII guard: block commits that add identifiable content to data/voice/examples.md
+# This file is in a PUBLIC repo. No real names, orgs, or identifiable details.
+
+DIFF=$(git diff --cached --diff-filter=ACM -- 'data/voice/examples.md' 2>/dev/null || true)
+[ -z "$DIFF" ] && exit 0
+
+# Check added lines only (lines starting with +, excluding +++ header)
+ADDED=$(echo "$DIFF" | grep '^+' | grep -v '^+++' || true)
+[ -z "$ADDED" ] && exit 0
+
+VIOLATIONS=""
+
+# 1. Japanese person names with titles (漢字1-4文字 + さん/部長/etc.)
+if echo "$ADDED" | grep -qE '[一-龥]{2,4}(さん|くん|様|氏|先生|部長|課長|社長|常務|専務)'; then
+    VIOLATIONS+="  - Japanese name with title detected\n"
+fi
+
+# 2. Organization names (bank, corp, etc.)
+if echo "$ADDED" | grep -qE '[一-龥ァ-ヶa-zA-Z]{2,}(銀行|証券|商事|物産|グループ|株式会社|合同会社|有限会社)'; then
+    VIOLATIONS+="  - Organization name detected\n"
+fi
+
+# 3. Email addresses
+if echo "$ADDED" | grep -qE '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'; then
+    VIOLATIONS+="  - Email address detected\n"
+fi
+
+# 4. Phone numbers (Japanese format)
+if echo "$ADDED" | grep -qE '0[0-9]{1,4}-[0-9]{1,4}-[0-9]{3,4}'; then
+    VIOLATIONS+="  - Phone number detected\n"
+fi
+
+# 5. Specific place names (addresses with 区/市/町/丁目)
+if echo "$ADDED" | grep -qE '[一-龥]{1,4}(区|市|町|丁目|番地)'; then
+    VIOLATIONS+="  - Address/place name detected\n"
+fi
+
+if [ -n "$VIOLATIONS" ]; then
+    echo ""
+    echo "❌ [pre-commit] PII detected in data/voice/examples.md"
+    echo ""
+    echo "This file is in a PUBLIC repository."
+    echo "The following patterns were found in staged changes:"
+    echo ""
+    echo -e "$VIOLATIONS"
+    echo "Fix: abstract the pattern. Replace identifiable details with generic placeholders."
+    echo "     Name substitution alone is NOT sufficient — context must also be anonymized."
+    echo ""
+    echo "To bypass (emergency only): SKIP_PII_CHECK=1 git commit ..."
+    echo ""
+    exit 1
+fi
+
+exit 0
