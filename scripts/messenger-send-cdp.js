@@ -11,13 +11,15 @@
  *   node messenger-send-cdp.js --thread <threadId> --message "Hello!"
  *   node messenger-send-cdp.js --thread <threadId> --e2ee --message "Hello!"
  *   node messenger-send-cdp.js --to "Recipient" --message "Line 1\nLine 2" --dry-run
+ *   node messenger-send-cdp.js --confirm-send   (send after dry-run confirmation)
  *
  * Options:
  *   --to <name>         Recipient name (used for search)
  *   --thread <id>       Thread ID (from URL's /t/<id>). Takes priority over --to
  *   --e2ee              Thread is E2EE (use /e2ee/t/<id> URL). Only with --thread
  *   --message <text>    Message to send (\n for newlines)
- *   --dry-run           Type message but don't send
+ *   --dry-run           Type message but don't send (saves screenshot for review)
+ *   --confirm-send      Send the text already in the textbox (use after --dry-run)
  *   --debug             Save debug screenshots
  *   --port <number>     CDP port (default: 9222)
  *   --timeout <ms>      Per-step timeout (default: 10000)
@@ -60,6 +62,7 @@ function parseArgs() {
     e2ee: false,
     message: null,
     dryRun: false,
+    confirmSend: false,
     debug: false,
     port: DEFAULT_CDP_PORT,
     timeout: 10000,
@@ -82,6 +85,9 @@ function parseArgs() {
       case "--dry-run":
         opts.dryRun = true;
         break;
+      case "--confirm-send":
+        opts.confirmSend = true;
+        break;
       case "--debug":
         opts.debug = true;
         break;
@@ -94,12 +100,17 @@ function parseArgs() {
     }
   }
 
-  if (!opts.message || (!opts.to && !opts.thread)) {
+  if (opts.confirmSend) {
+    // --confirm-send mode: no --message or --to/--thread needed
+  } else if (!opts.message || (!opts.to && !opts.thread)) {
     console.error(
       'Usage: node messenger-send-cdp.js --to "Name" --message "Message"',
     );
     console.error(
       '       node messenger-send-cdp.js --thread <threadId> --message "Message"',
+    );
+    console.error(
+      "       node messenger-send-cdp.js --confirm-send",
     );
     process.exit(1);
   }
@@ -385,6 +396,26 @@ async function main() {
 
     console.error("Page:", page.url());
 
+    // --confirm-send mode: skip navigation/typing, just verify textbox and send
+    if (opts.confirmSend) {
+      const content = await page.evaluate(() => {
+        const input = document.querySelector('[role="textbox"][contenteditable="true"]');
+        return input ? input.innerText.trim() : "";
+      });
+      if (!content) {
+        console.error("ERROR: textbox is empty -- nothing to send");
+        process.exit(1);
+      }
+      console.error(`Confirm-send: textbox has "${content.substring(0, 80)}..."`);
+      // Save evidence screenshot before sending
+      await page.screenshot({ path: path.join(OUTPUT_DIR, `send-confirmed-${Date.now()}.png`) });
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(3000);
+      console.error("Message sent!");
+      console.log(JSON.stringify({ success: true, status: "sent", message: content }));
+      return;
+    }
+
     // Dismiss overlays
     await dismissOverlays(page);
 
@@ -432,13 +463,17 @@ async function main() {
 
     // Send or dry-run
     if (opts.dryRun) {
-      console.error("DRY RUN -- message typed but not sent");
+      const ssPath = "/tmp/messenger-pre-send.png";
+      await page.screenshot({ path: ssPath });
+      console.error("DRY RUN -- screenshot saved for confirmation");
       console.log(
         JSON.stringify({
           success: true,
           dryRun: true,
+          status: "pending_confirmation",
           recipient: opts.to || opts.thread,
           message: opts.message,
+          screenshotPath: ssPath,
         }),
       );
     } else {

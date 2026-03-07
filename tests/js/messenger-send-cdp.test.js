@@ -119,4 +119,26 @@ describe("parseArgs", () => {
     expect(() => parseArgs()).toThrow("exit");
     expect(process.exit).toHaveBeenCalledWith(1);
   });
+
+  it("parses --confirm-send flag (no --message or --to required)", () => {
+    process.argv = ["node", "script.js", "--confirm-send"];
+    const opts = parseArgs();
+    expect(opts.confirmSend).toBe(true);
+    expect(opts.message).toBeNull();
+    expect(opts.to).toBeNull();
+    expect(opts.thread).toBeNull();
+  });
+
+  it("defaults confirmSend to false", () => {
+    process.argv = [
+      "node",
+      "script.js",
+      "--to",
+      "Someone",
+      "--message",
+      "Hello",
+    ];
+    const opts = parseArgs();
+    expect(opts.confirmSend).toBe(false);
+  });
 });
